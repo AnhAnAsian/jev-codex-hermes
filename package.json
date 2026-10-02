@@ -1,0 +1,20 @@
+{
+  "name": "jev-desktop-hermes",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "bootstrap": "node scripts/bootstrap.mjs",
+    "validate": "npm test && python3 -m unittest discover -s test -p \"test_*.py\" && python3 scripts/check-package.py",
+    "install:local": "python3 scripts/install.py"
+  },
+  "dependencies": {
+    "ws": "8.22.0"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "description": "A local Jev adapter for Codex Desktop and Hermes with subscription-preserving forwarding.",
+  "license": "MIT"
+}

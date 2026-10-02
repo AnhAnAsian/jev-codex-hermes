@@ -1,0 +1,14 @@
+This adapter uses flaviusapop/jev-router under the MIT License:
+https://github.com/flaviusapop/jev-router
+Copyright (c) 2026 Flavius Pop and Jev Router contributors
+
+That upstream began as a fork of gargpratyush/jev-router under MIT:
+https://github.com/gargpratyush/jev-router
+Copyright (c) 2026 Jev Router contributors
+
+Bootstrap preserves upstream LICENSE and NOTICE in its unchanged checkout.
+Upstream supplies Jev questions, routing policy, override and request helpers.
+This adapter adds a persistent localhost service, Codex Desktop picker and
+Hermes integration, conversation pins, safe receipts and reversible config.
+The projects and providers are not affiliated with this adapter.
+The adapter's MIT license does not replace dependency licenses.
