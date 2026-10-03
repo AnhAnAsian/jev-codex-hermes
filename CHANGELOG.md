@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased — 2026-10-03
+## 0.2.0 — 2026-10-03
+
+Added a localhost settings page and `jev-router settings`: editable tier maps,
+reasoning, pause/resume, routing mode, fallback and classification limits. Saves
+validate a bounded merge, create private backups and reject stale revisions.
+Browser writes require same-origin and an anti-CSRF token. Refreshed the GitHub
+README with a routing banner, settings preview and installation/upgrade guidance.
+
+### Review fixes
 
 Fixed all nine initial review findings with routing, capability, configuration
 recovery, runtime catalog and installer regression tests. Added safe config

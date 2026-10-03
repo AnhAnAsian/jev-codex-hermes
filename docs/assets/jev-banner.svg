@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+<title id="title">Jev for Codex Desktop and Hermes</title><desc id="desc">One local router. Four editable tiers. Your existing subscriptions.</desc>
+<rect width="1200" height="360" rx="18" fill="#eef4fa"/>
+<path d="M0 320H1200" stroke="#d1dee9"/>
+<g font-family="Avenir Next,Segoe UI,Arial,sans-serif" fill="#193750">
+<text x="55" y="78" font-size="22" font-weight="700" letter-spacing="2">JEV / LOCAL ROUTER</text>
+<text x="50" y="157" font-size="58" font-weight="800" letter-spacing="-2">One choice.</text><text x="50" y="217" font-size="58" font-weight="800" letter-spacing="-2">A focused conversation.</text>
+<text x="55" y="270" font-size="19" fill="#536d81">Codex Desktop + Hermes · your existing subscriptions</text>
+<g font-size="16" font-weight="700"><text x="966" y="80">FAST</text><text x="966" y="142">BALANCED</text><text x="966" y="204">STRONG</text><text x="966" y="266">LONG</text></g>
+<text x="55" y="345" font-size="13" fill="#536d81">Classify once. Choose model + reasoning. Keep the conversation pinned.</text>
+<text x="992" y="345" font-size="13" fill="#536d81">127.0.0.1 only</text>
+</g>
+<g fill="none" stroke-width="4"><path d="M740 180H800Q825 180 825 155V85Q825 75 850 75H940" stroke="#14766d"/><path d="M740 180H825Q850 180 850 155V140Q850 137 875 137H940" stroke="#255b9a"/><path d="M740 180H825Q850 180 850 199Q850 199 875 199H940" stroke="#7263a7"/><path d="M740 180H800Q825 180 825 205V251Q825 261 850 261H940" stroke="#ae7315"/></g>
+<circle cx="740" cy="180" r="11" fill="#193750"/><g><circle cx="940" cy="75" r="7" fill="#14766d"/><circle cx="940" cy="137" r="7" fill="#255b9a"/><circle cx="940" cy="199" r="7" fill="#7263a7"/><circle cx="940" cy="261" r="7" fill="#ae7315"/></g>
+</svg>

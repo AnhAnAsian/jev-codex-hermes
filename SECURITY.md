@@ -25,3 +25,11 @@ guaranteed merely by the proxy forwarding a request successfully.
 
 For private reports, contact the repository owner through a private channel;
 do not post credentials, task payloads or request dumps in issues.
+
+## Local settings writes
+
+The settings page exposes only an editable projection, never keys or upstream URLs.
+Saves require a process-specific token, exact same-origin and JSON content type;
+unknown fields, invalid values, oversized payloads and stale revisions are rejected.
+The existing loopback/Host checks and restrictive CSP also apply. Private backups
+precede atomic replacement. Local account processes are inside the trust boundary.

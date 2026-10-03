@@ -167,7 +167,12 @@ try {
     else console.log(fs.existsSync(p)?fs.readFileSync(p,'utf8').trim().split('\n').slice(-30).join('\n'):'No routing decisions yet.');
   }
   else if(action==='config')console.log(configPath);
+  else if(action==='settings') {
+    const url=endpoint()+'/settings';
+    if(process.platform==='darwin')spawnSync('/usr/bin/open',[url],{stdio:'ignore'});
+    console.log(url);
+  }
   else if(action==='uninstall'){manage('uninstall');console.log('For full removal including private key/backups, follow the uninstall instructions in README.md.');}
   else if(['claude','codex','hermes'].includes(action))await client(action,process.argv.slice(3));
-  else console.log('Usage: jev-router start|stop|restart|status|doctor|desktop-enable|desktop-disable|key [--openrouter]|classify-test|enable|disable|logs [--follow]|config|uninstall|claude|codex|hermes');
+  else console.log('Usage: jev-router start|stop|restart|status|doctor|desktop-enable|desktop-disable|key [--openrouter]|classify-test|enable|disable|logs [--follow]|settings|config|uninstall|claude|codex|hermes');
 }catch {console.error('Jev command failed. Run jev-router doctor, or jev-router disable to restore the normal clients.');process.exitCode=1;}

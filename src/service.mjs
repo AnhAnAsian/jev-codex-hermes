@@ -6,6 +6,8 @@ import {randomUUID} from 'node:crypto';
 import WebSocket,{WebSocketServer} from 'ws';
 import {readConfig,loadKey,safeLog,loadModelCatalog} from './settings.mjs';
 import {RoutingEngine} from './routing.mjs';
+import {SettingsStore} from './settings-store.mjs';
+const version=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8')).version;
 
 function allowed(req) {
   if(req.socket.remoteAddress!=='127.0.0.1')return false;
@@ -52,20 +54,45 @@ export function servedInspector(receipt,transport,logger) {
     if(done || buffer.length>262144)buffer='';
   };
 }
-export async function startService({config=readConfig,classifier,logger=safeLog,port,catalog=loadModelCatalog}={}) {
+export async function startService({config=readConfig,classifier,logger=safeLog,port,catalog=loadModelCatalog,settingsStore=new SettingsStore({catalog})}={}) {
   let snapshot=structuredClone(config()),degraded=false;
   const initial=snapshot;
   const current=()=>{try{snapshot=structuredClone(config());degraded=false;}catch{degraded=true;}return snapshot;};
   const engine=new RoutingEngine({config:current,classifier,logger});
   const refreshModels=()=>engine.seedModels(catalog());refreshModels();
+  const settingsToken=randomUUID();
   const handler=async(req,res)=>{
     if(!allowed(req))return res.writeHead(403).end();
-    const assets={'/':['index.html','text/html; charset=utf-8'],'/advice.js':['advice.js','text/javascript; charset=utf-8'],'/advice.css':['advice.css','text/css; charset=utf-8']};
+    if(req.method==='GET' && req.url==='/favicon.ico')return res.writeHead(204).end();
+    const assets={'/':['index.html','text/html; charset=utf-8'],'/advice.js':['advice.js','text/javascript; charset=utf-8'],'/advice.css':['advice.css','text/css; charset=utf-8'],
+      '/settings':['settings.html','text/html; charset=utf-8'],'/settings.js':['settings.js','text/javascript; charset=utf-8'],'/settings.css':['settings.css','text/css; charset=utf-8']};
     if(req.method==='GET' && assets[req.url]) {
       const [file,type]=assets[req.url];
       return res.writeHead(200,{'content-type':type,'cache-control':'no-store','x-content-type-options':'nosniff',
         'referrer-policy':'no-referrer','content-security-policy':"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"})
         .end(fs.readFileSync(new URL('../ui/'+file,import.meta.url)));
+    }
+    if(req.url==='/settings/state') {
+      res.setHeader('cache-control','no-store');res.setHeader('x-content-type-options','nosniff');
+      res.setHeader('content-type','application/json');
+      if(req.method==='GET') {
+        try{return res.end(JSON.stringify({...settingsStore.read(),token:settingsToken}));}
+        catch{return res.writeHead(503).end('{"error":"Configuration is invalid or unavailable. Repair config.json, then reload."}');}
+      }
+      if(req.method!=='POST')return res.writeHead(405,{'allow':'GET, POST'}).end('{}');
+      if(req.headers.origin!==`http://${req.headers.host}` || req.headers['x-jev-settings-token']!==settingsToken)return res.writeHead(403).end('{"error":"Reload settings before saving."}');
+      if(req.headers['content-type']?.split(';')[0]!=='application/json')return res.writeHead(415).end('{}');
+      try {
+        const chunks=[];let size=0;
+        for await(const chunk of req){size+=chunk.length;if(size>32768)return res.writeHead(413).end('{"error":"Settings payload too large."}');chunks.push(chunk);}
+        const saved=settingsStore.save(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+        current();refreshModels();
+        return res.end(JSON.stringify({...saved,token:settingsToken,saved:true}));
+      }catch(error) {
+        const status=error.status===409?409:error.status===400 || error instanceof SyntaxError?400:500;
+        const message=status===409?'Settings changed elsewhere. Reload and apply your changes again.':status===400?'Invalid settings. Check model IDs, reasoning levels and classification limit.':'Settings could not be saved. Your previous configuration is retained.';
+        return res.writeHead(status).end(JSON.stringify({error:message}));
+      }
     }
     if(req.url==='/advice' && req.method==='POST') {
       res.setHeader('cache-control','no-store');
@@ -82,7 +109,7 @@ export async function startService({config=readConfig,classifier,logger=safeLog,
     }
     if(req.url==='/health') {
       const c=current();refreshModels();
-      return res.writeHead(degraded?503:200,{'content-type':'application/json'}).end(JSON.stringify({ok:!degraded,service:'jev-desktop-hermes',config_state:degraded?'last-valid':'valid',enabled:c.enabled,keyAvailable:Boolean(loadKey(c)),classifier:c.classifier?.provider || 'typesafe',host:'127.0.0.1',port:server.address().port}));
+      return res.writeHead(degraded?503:200,{'content-type':'application/json','cache-control':'no-store'}).end(JSON.stringify({ok:!degraded,service:'jev-desktop-hermes',version,config_state:degraded?'last-valid':'valid',enabled:c.enabled,keyAvailable:Boolean(loadKey(c)),classifier:c.classifier?.provider || 'typesafe',host:'127.0.0.1',port:server.address().port}));
     }
     if(req.url==='/desktop/decision' && req.method==='POST') {
       try {

@@ -65,3 +65,11 @@ continues with the last validated snapshot. Repair the configuration to resume
 normal health. Startup still requires a valid config. `refresh-catalog` updates
 both generated catalogs and the running service metadata; restart Desktop to
 reload its picker. Only explicit supported Hermes providers are integrated.
+
+## Browser settings
+
+Use `jev-router settings` for common routing controls. Each save validates a merge,
+creates a private config backup and reloads settings without restarting the service.
+Model ID changes require `refresh-catalog` and Desktop restart for accurate context
+limits. Keys, endpoints and client activation remain advanced operations. See
+[SETTINGS.md](SETTINGS.md).
