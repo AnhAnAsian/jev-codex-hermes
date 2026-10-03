@@ -24,7 +24,7 @@ export class SettingsStore {
     const text=fs.readFileSync(this.file,'utf8');
     const c=validateConfig(JSON.parse(text));
     const catalog=this.catalog();
-    const models=(Array.isArray(catalog?.models)?catalog.models:[]).filter(m=>m && typeof m.slug==='string' && /^[a-zA-Z0-9._\-:\[\]]{1,120}$/.test(m.slug) && !m.slug.includes('jev-'))
+    const models=(Array.isArray(catalog?.models)?catalog.models:[]).filter(m=>m && m.visibility!=='hide' && m.supported_in_api!==false && typeof m.slug==='string' && /^[a-zA-Z0-9._\-:\[\]]{1,120}$/.test(m.slug) && !m.slug.includes('jev-'))
       .map(m=>({id:m.slug,efforts:(Array.isArray(m.supported_reasoning_levels)?m.supported_reasoning_levels:[]).map(e=>e?.effort).filter(e=>typeof e==='string' && /^[a-z]{1,20}$/.test(e))}));
     return {revision:revision(text),settings:editableSettings(c),models,
       integrations:Object.fromEntries(['codex','hermes','claude'].map(n=>[n,c.clients[n]])),classifier:c.classifier?.provider||'typesafe'};

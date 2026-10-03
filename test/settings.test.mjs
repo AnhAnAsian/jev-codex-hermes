@@ -18,7 +18,7 @@ test('Settings projection excludes private/advanced fields and backup preserves 
 });
 test('Settings metadata is bounded despite unknown client fields or malformed catalog entries',t=>{
  const {file,c}=fixture(t);c.clients.privateExtension='do-not-expose';fs.writeFileSync(file,JSON.stringify(c));
- const store=new SettingsStore({file,catalog:()=>({models:[null,{slug:'gpt-6-luna',supported_reasoning_levels:[null,{effort:'medium'}]},{slug:'gpt-6.1-sol',supported_reasoning_levels:{}},{slug:'invalid model'}]})});
+ const store=new SettingsStore({file,catalog:()=>({models:[null,{slug:'gpt-6-luna',supported_reasoning_levels:[null,{effort:'medium'}]},{slug:'gpt-6.1-sol',supported_reasoning_levels:{}},{slug:'invalid model'},{slug:'codex-auto-review',visibility:'hide'},{slug:'unavailable-model',supported_in_api:false}]})});
  const snapshot=store.read();assert.deepEqual(snapshot.integrations,{codex:true,hermes:false,claude:false});assert(!JSON.stringify(snapshot).includes('privateExtension'));assert.deepEqual(snapshot.models,[{id:'gpt-6-luna',efforts:['medium']},{id:'gpt-6.1-sol',efforts:[]}]);
 });
 test('Settings reject stale saves, prototype/unknown fields and invalid maps without writes',t=>{

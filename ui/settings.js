@@ -16,7 +16,7 @@ function renderReasoning(c,value,modelChanged=false){
   if(!values.includes(next))c.effort.append(option(next,next+' · saved, unsupported'));
   c.effort.value=next;
   const known=provider==='codex'&&loaded.models.some(m=>m.id===model);
-  const warning=provider==='codex'&&!known?'Not in the local catalog. Check this ID before using it.':!values.includes(next)?'Saved effort is unsupported. Choose a supported level.':modelChanged&&next!==current?'Reasoning adjusted to '+(next||'no effort setting')+' for this model.':'';
+  const warning=provider==='codex'&&!known?'Not in the picker catalog. Check this ID before using it.':!values.includes(next)?'Saved effort is unsupported. Choose a supported level.':modelChanged&&next!==current?'Reasoning adjusted to '+(next||'no effort setting')+' for this model.':'';
   c.feedback.textContent=warning;c.feedback.classList.toggle('warning',Boolean(warning));
   c.idText.textContent=model;c.idText.title=model;
   c.cost.hidden=!/-(astra|fable)(?:-|$)/.test(model);

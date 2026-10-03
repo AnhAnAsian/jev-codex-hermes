@@ -61,7 +61,8 @@ boundary against other local processes or untrusted extensions under your accoun
 Model and fallback controls use native dropdowns, including in the Codex in-app
 browser. Codex options come from the local catalog; configured Claude models are
 listed without claiming account discovery. Custom IDs remain available explicitly.
-Saved IDs absent from the catalog are retained and flagged, never silently replaced.
+Hidden and API-unavailable entries are omitted from suggestions. Saved IDs absent
+from the picker catalog are retained and flagged, never silently replaced.
 Astra/Fable choices are grouped as additional-credit models.
 
 Known Codex models expose only their supported reasoning levels. On a model change,
