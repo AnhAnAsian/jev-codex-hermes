@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 — 2026-10-03
+
+Replaced unreliable datalist model inputs with native model/fallback dropdowns.
+Added capability-aware reasoning choices, explicit custom IDs, unlisted-ID and
+additional-credit warnings. Improved compact/responsive layout, accessible labels,
+advanced disclosure, sticky save feedback, discard and accurate dirty tracking.
+Provider changes retain drafts; save/load freeze edits and have bounded timeouts.
+
 ## 0.2.0 — 2026-10-03
 
 Added a localhost settings page and `jev-router settings`: editable tier maps,

@@ -55,3 +55,22 @@ response through CORS. Payloads are bounded to 32 KiB; arbitrary configuration
 fields are rejected. Scripts/assets use a restrictive CSP and no remote resources.
 This protects against websites making background writes; it is not an authentication
 boundary against other local processes or untrusted extensions under your account.
+
+## Model selection
+
+Model and fallback controls use native dropdowns, including in the Codex in-app
+browser. Codex options come from the local catalog; configured Claude models are
+listed without claiming account discovery. Custom IDs remain available explicitly.
+Saved IDs absent from the catalog are retained and flagged, never silently replaced.
+Astra/Fable choices are grouped as additional-credit models.
+
+Known Codex models expose only their supported reasoning levels. On a model change,
+an incompatible effort adjusts to a supported level with inline feedback. Haiku
+uses no effort setting. Unsupported saved efforts are retained and flagged until
+you select a valid level. Unknown model IDs retain the advanced effort choices.
+
+Save is enabled only for changed settings. Discard resets unsaved edits. Provider
+switching preserves drafts; the form is frozen during saves to avoid losing edits.
+Advanced classification controls are collapsed by default, and disabled tiers
+disable their model/effort controls. Mode changes and global tier switches retain
+the existing backend behavior described above.

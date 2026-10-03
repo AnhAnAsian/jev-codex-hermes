@@ -65,7 +65,7 @@ export async function startService({config=readConfig,classifier,logger=safeLog,
     if(!allowed(req))return res.writeHead(403).end();
     if(req.method==='GET' && req.url==='/favicon.ico')return res.writeHead(204).end();
     const assets={'/':['index.html','text/html; charset=utf-8'],'/advice.js':['advice.js','text/javascript; charset=utf-8'],'/advice.css':['advice.css','text/css; charset=utf-8'],
-      '/settings':['settings.html','text/html; charset=utf-8'],'/settings.js':['settings.js','text/javascript; charset=utf-8'],'/settings.css':['settings.css','text/css; charset=utf-8']};
+      '/settings':['settings.html','text/html; charset=utf-8'],'/settings.js':['settings.js','text/javascript; charset=utf-8'],'/settings-controls.js':['settings-controls.js','text/javascript; charset=utf-8'],'/settings.css':['settings.css','text/css; charset=utf-8']};
     if(req.method==='GET' && assets[req.url]) {
       const [file,type]=assets[req.url];
       return res.writeHead(200,{'content-type':type,'cache-control':'no-store','x-content-type-options':'nosniff',

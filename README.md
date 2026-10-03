@@ -96,6 +96,10 @@ Desktop normally without starting a terminal wrapper.
 
 Or open **[127.0.0.1:48767/settings](http://127.0.0.1:48767/settings)**.
 
+Use native model dropdowns populated from your local Codex catalog. Reasoning
+choices follow known model capabilities; unlisted saved IDs stay visible with a
+warning. Choose **Enter a custom model ID…** when needed.
+
 Edit the model/reasoning for each tier, turn tiers on or off, select conversation
 or per-turn routing, choose the fallback, and limit the classification excerpt.
 Every save validates and merges your changes, creates a private backup, and
@@ -108,7 +112,7 @@ so its advertised context limits match the new map. Other settings reload live.
 <details>
 <summary><strong>Preview the settings page</strong></summary>
 
-![Jev settings page with editable tier models and reasoning](docs/assets/settings.png)
+![Jev settings page with editable tier models and reasoning](docs/assets/settings.jpg)
 
 Preview uses example configuration and fake classifier readiness; no real key or private client data appears.
 

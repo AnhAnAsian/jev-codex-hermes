@@ -63,3 +63,11 @@ auxiliary Hermes request used the configured Sol fallback. Claude login still
 failed doctor. Post-upgrade normal Desktop generation, reboot, Computer Use and
 compaction remain separate acceptance checks; opening the settings page does not
 verify Desktop generation.
+
+## Dropdown acceptance — 0.2.1 / 2026-10-03
+
+Native model dropdown opening/selection, save/reload persistence, provider changes
+with pending edits, custom-ID retention, discard, disabled-tier controls and a
+390 px layout were exercised in the Codex in-app browser against isolated example
+state. The browser reported no errors and no horizontal overflow at 390 px.
+The installed configuration remains separate from that test fixture.
