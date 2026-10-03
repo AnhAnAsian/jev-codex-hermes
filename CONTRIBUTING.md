@@ -19,6 +19,10 @@ Tests use synthetic requests, temporary homes and fake credentials. They do not
 require paid classifier access or client logins. Passing them does not prove live
 Desktop behavior; use [VALIDATION.md](docs/VALIDATION.md) for client acceptance.
 Do not run the installer against your everyday configuration merely to test code.
+Use [clean-install acceptance](docs/CLEAN-INSTALL.md) for the fresh public checkout
+gate and a separate live Mac checklist. Report bugs with the
+[public issue form](https://github.com/AnhAnAsian/jev-codex-hermes/issues/new?template=bug_report.yml);
+the privacy checklist is guidance, not an automatic secret filter.
 
 ## Find the code
 
@@ -51,3 +55,5 @@ Never merge a checkout from before an email-privacy rewrite into cleaned history
 Upstream is pinned and unmodified. If an upstream change is needed, explain why
 the adapter cannot handle it, update the lock deliberately and rerun both suites.
 No blanket dependency updates or new gateway framework are needed for docs/UI polish.
+Review dependency updates individually using [the dependency gate](docs/DEPENDENCY-REVIEW.md).
+Major updates remain unmerged until their impact and required checks are validated.

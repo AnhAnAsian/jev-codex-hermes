@@ -10,6 +10,7 @@ __pycache__/
 backups/
 *-probe.json
 test-results.json
+*checkout-report.json
 family-variant-tests.json
 key.env
 integration.json

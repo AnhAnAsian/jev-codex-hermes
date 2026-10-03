@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a vulnerability privately
+    url: https://github.com/AnhAnAsian/jev-codex-hermes/security/advisories/new
+    about: Do not disclose security findings or credentials in a public issue.
+  - name: Setup and client guide
+    url: https://github.com/AnhAnAsian/jev-codex-hermes/blob/main/docs/CLIENTS.md
+    about: Check client support, model picker entries and authentication scope first.

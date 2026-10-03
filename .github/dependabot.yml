@@ -1,4 +1,6 @@
 version: 2
+# Keep updates individual. All updates require review; major updates remain open
+# until validated. See docs/DEPENDENCY-REVIEW.md. Do not add automatic merging.
 updates:
   - package-ecosystem: npm
     directory: /

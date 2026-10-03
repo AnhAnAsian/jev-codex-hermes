@@ -1,0 +1,66 @@
+name: Bug report
+description: Report a reproducible problem with installation, selection or routing.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This report is public. Use a synthetic task and share only the details below.
+        **Never attach private prompts, source code, credentials, client configs, authorization headers or raw request dumps.**
+        Report vulnerabilities through [private security reporting](https://github.com/AnhAnAsian/jev-codex-hermes/security/advisories/new), not here.
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Adapter tag/commit, macOS version, client version, Node and Python versions. No usernames or personal paths.
+      placeholder: "Adapter v0.3.0; macOS …; Codex Desktop …; Node 22.x; Python 3.11.x"
+    validations:
+      required: true
+  - type: dropdown
+    id: client
+    attributes:
+      label: Affected client
+      options:
+        - Codex Desktop
+        - Codex CLI
+        - First-party Hermes
+        - Claude Code terminal (experimental)
+        - Local settings / installer / other
+    validations:
+      required: true
+  - type: input
+    id: provider
+    attributes:
+      label: Provider and routing profile
+      description: Answering provider/auth type (for example Codex subscription or Anthropic API), classifier provider (OpenRouter/TypeSafe), and Jev/Jev Luna/Jev Sol. Never paste keys or tokens.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened, and what should have happened?
+      description: Include the error message with personal paths, prompts and credentials removed.
+      placeholder: "Expected: …\nObserved: …"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Use a small, made-up task. Say whether this is a fresh install and whether a client restart changes the result.
+      placeholder: "1. Select Jev in a new conversation\n2. Ask: Calculate 2 + 2. Do not use tools.\n3. …"
+    validations:
+      required: true
+  - type: textarea
+    id: receipt
+    attributes:
+      label: Optional routing evidence
+      description: Copy only client, tier, selected model, served_model, outbound effort, confidence, latency and fallback/error state. Mark unavailable fields as unverified. No full logs, doctor output, configs or request/response bodies.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Before submitting
+      options:
+        - label: I removed credentials, private prompts/code, personal information, raw dumps and client configuration files. This is not a security disclosure.
+          required: true

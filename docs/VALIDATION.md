@@ -30,6 +30,11 @@ Mocked classifier/provider tests verify model/effort rewrites, pinning, manual
 overrides, streaming, opaque headers, origin checks and metadata logging.
 Temporary-home Python tests verify selective client installation and restoration.
 They do not prove the normal Desktop app or provider accepts a request.
+The macOS gate additionally copies the real installed package/dependencies, loads
+its CLI and checks generated catalog/startup metadata plus synthetic config restore.
+Launchd activation is intercepted; Linux skips this macOS-only check. Use
+[clean-install acceptance](CLEAN-INSTALL.md) for the public-checkout runner and
+separate login/picker/receipts/reboot steps. Do not infer live success from CI.
 
 ## Live acceptance on your account
 

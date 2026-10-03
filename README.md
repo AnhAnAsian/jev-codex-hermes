@@ -77,7 +77,6 @@ npm test --prefix upstream
 python3 scripts/install.py --hermes
 ```
 
-While the repository is private, cloning requires existing GitHub access.
 Omit `--hermes` for Codex Desktop only. For Hermes, configure its normal provider
 first: `openai-codex`, `anthropic` or `claude`. The installer preserves it and
 refuses unsupported transports. Add `--claude` only for the experimental Claude
@@ -209,9 +208,12 @@ reporting and what information to include.
 
 ## Evidence, updates and recovery
 
-The current gate covers **39 Node + 22 Python + 154 upstream tests**. CI runs
+The current gate covers **39 Node + 23 Python + 154 upstream tests**. CI runs
 without paid keys or client logins. See [validation](docs/VALIDATION.md) for dated
 live observations and the acceptance checklist for another Mac.
+Use [clean-install acceptance](docs/CLEAN-INSTALL.md) to test a fresh public
+checkout safely, then verify login, the native picker, real receipts and startup
+on a clean Mac account. Automated packaging tests do not establish live acceptance.
 
 Live Anthropic generation, comprehensive Desktop Computer Use/compaction, all
 real coding tiers and reboot acceptance remain outstanding. Cache hits aren't
@@ -233,6 +235,10 @@ for the classifier integration and decision policy. This project covers the
 Desktop/Hermes integration gap. See [NOTICE](NOTICE) and [MIT license](LICENSE).
 
 Want to improve it? Start with [CONTRIBUTING.md](CONTRIBUTING.md).
+Found a bug? Use [the guided report form](https://github.com/AnhAnAsian/jev-codex-hermes/issues/new?template=bug_report.yml)
+with versions and a synthetic reproduction; keep private prompts and credentials out.
+Dependency updates follow [an individual review gate](docs/DEPENDENCY-REVIEW.md);
+major updates stay unmerged until validated.
 Independent project; not affiliated with OpenAI, Anthropic, Nous Research,
 OpenRouter, TypeSafe or the upstream maintainers.
 
