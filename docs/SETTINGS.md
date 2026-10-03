@@ -89,7 +89,9 @@ The Claude / Anthropic profile is shared by the optional Claude Code terminal an
 Hermes Anthropic integrations. It does not switch Hermes away from Codex OAuth,
 authenticate an Anthropic account or add Jev to Claude Desktop Chat/Cowork.
 Anthropic models are configured IDs, not a discovered account catalog, and live
-Anthropic generation remains unverified. See [client support](CLIENTS.md).
+Anthropic generation remains unverified. Public support scope is experimental
+API authentication, with no consumer OAuth/subscription routing claim. See
+[client support](CLIENTS.md).
 
 Timing is independent: Codex, Hermes and Claude can each choose once per conversation
 or once per new human turn. Tool loops stay pinned in either mode. Profile edits

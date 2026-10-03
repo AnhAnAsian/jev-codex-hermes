@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+Public-release preparation: clearer verified client scope and experimental
+Anthropic API-auth boundaries, tested-version snapshot, external classification
+cost/privacy notice and explicit cache/quota limits. Added a concrete GitHub
+security-reporting policy, checksum-pinned full-history secret-scan workflow and
+a tested helper for post-publication security activation that never publishes
+the repo or enables paid Advanced Security. Added release/clone-recovery guidance.
+
 Renamed the repository/package to `jev-codex-hermes`, with display name
 **Jev for Codex & Hermes**. Updated clone commands and CI badge links. The internal
 health service identifier remains `jev-desktop-hermes` for compatibility with

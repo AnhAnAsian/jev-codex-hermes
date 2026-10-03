@@ -37,7 +37,9 @@ access. This is a small adapter around the unmodified
 
 > **Experimental, with explicit limits.** macOS startup is supported; CI runs on
 > macOS and Linux. Live behavior depends on client versions, model access and auth.
-> Model switching does not guarantee prompt-cache hits.
+> The verified scope is Codex Desktop and first-party Hermes on Codex OAuth.
+> Anthropic routes are experimental API-auth integrations, not promised Claude
+> subscription support. Routing does not guarantee cache hits or quota savings.
 
 ## Where it works
 
@@ -46,7 +48,7 @@ access. This is a small adapter around the unmodified
 | **Codex Desktop** | Select **Jev**, **Jev Luna** or **Jev Sol** in the normal picker | Parent request routing and served-model receipts observed |
 | **First-party Hermes** | `/model jev`, `/model jev-luna`, `/model jev-sol` on Codex OAuth; picker catalog entries also installed | All three profiles verified in the CLI; native GUI refresh still needs visual acceptance |
 | **Codex CLI** | Shared provider configuration or `jev-codex` | Adapter coverage; repeat live acceptance on your installation |
-| **Claude Code terminal / Hermes Anthropic** | Optional Anthropic proxy integration | Automated coverage; live Anthropic generation unverified |
+| **Claude Code terminal / Hermes Anthropic** | Optional experimental API-auth proxy integration | Automated coverage; live Anthropic generation unverified; consumer OAuth routing is not a supported feature |
 | **Claude Desktop Chat / Cowork** | Use the local **Ask Jev** page for advice, then choose a model manually | Automatic integration is not installed |
 
 The Anthropic map in settings is for the optional Anthropic integrations. It does
@@ -54,6 +56,8 @@ The Anthropic map in settings is for the optional Anthropic integrations. It doe
 Desktop's normal login: its documented third-party gateway mode is a separate
 deployment, and subscription-preserving routing has not been established.
 See [client details and troubleshooting](docs/CLIENTS.md).
+Tested client versions and release limitations are recorded in
+[the compatibility snapshot](docs/VALIDATION.md#compatibility-snapshot).
 
 ## Get started
 
@@ -73,11 +77,14 @@ npm test --prefix upstream
 python3 scripts/install.py --hermes
 ```
 
-The repository is private; cloning uses your existing GitHub authentication.
+While the repository is private, cloning requires existing GitHub access.
 Omit `--hermes` for Codex Desktop only. For Hermes, configure its normal provider
 first: `openai-codex`, `anthropic` or `claude`. The installer preserves it and
 refuses unsupported transports. Add `--claude` only for the experimental Claude
-Code terminal integration. Use an explicit Python 3.11+ executable if needed.
+Code terminal integration with your own authorized Anthropic API credentials;
+API billing is separate from a Claude subscription. An Anthropic provider label
+alone does not establish permitted authentication. Use an explicit Python 3.11+
+executable if needed.
 
 **Already installed?** Use the [migration guide](docs/OPERATIONS.md#existing-installation--adapter-migration).
 The installer refuses to overwrite existing code or private state. Pulling the
@@ -187,15 +194,22 @@ client routing. See [all operational controls](docs/OPERATIONS.md).
 **Classification is not local:** up to 8,000 task characters by default are sent
 to TypeSafe/Jev, directly or through OpenRouter. The limit is editable. Use a real
 manual model or disable routing when the text must not reach the classifier.
+The classifier uses paid OpenRouter credits or TypeSafe access. It is separate
+from answering-model usage: original provider quotas and billing still apply,
+and auxiliary client requests can consume usage. This project promises neither
+quota reductions nor a particular cache hit rate.
 
 The service doesn't open client OAuth token stores. Logs use an allowlist of
 routing metadata. Browser saves require exact same-origin and a process-specific
 token. Local software under your account can still access the listener; localhost
 is not an authentication boundary. Details: [SECURITY.md](SECURITY.md).
+Report vulnerabilities through [the private GitHub security form](https://github.com/AnhAnAsian/jev-codex-hermes/security/advisories/new)
+once it is enabled for public release; the security policy describes private-phase
+reporting and what information to include.
 
 ## Evidence, updates and recovery
 
-The current gate covers **39 Node + 17 Python + 154 upstream tests**. CI runs
+The current gate covers **39 Node + 22 Python + 154 upstream tests**. CI runs
 without paid keys or client logins. See [validation](docs/VALIDATION.md) for dated
 live observations and the acceptance checklist for another Mac.
 
@@ -221,3 +235,7 @@ Desktop/Hermes integration gap. See [NOTICE](NOTICE) and [MIT license](LICENSE).
 Want to improve it? Start with [CONTRIBUTING.md](CONTRIBUTING.md).
 Independent project; not affiliated with OpenAI, Anthropic, Nous Research,
 OpenRouter, TypeSafe or the upstream maintainers.
+
+Maintainers: use [the public-release checklist](docs/PUBLIC-RELEASE.md) before
+changing visibility. Publishing and enabling GitHub security features are separate
+steps; the security helper never changes visibility.

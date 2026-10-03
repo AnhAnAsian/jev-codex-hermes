@@ -4,6 +4,19 @@ Development observations from 2026-10-02: Codex Desktop 26.928.20755 / bundled
 engine 0.159.0, standalone CLI 0.153.4, Hermes 0.21.5+3698.g6f7a799, Claude Code
 2.1.259, Node 22 and Python 3.11+. Model availability is client/account-specific.
 
+## Compatibility snapshot
+
+These versions describe observations from 2026-10-02/03, not a support guarantee
+for every release or account. New versions require the live acceptance below.
+
+| Surface | Observed version | Evidence and limit |
+| :--- | :--- | :--- |
+| Codex Desktop | 26.928.20755; bundled engine 0.159.0 | Parent routing observed; broad Computer Use/compaction/reboot acceptance pending |
+| Codex CLI | 0.153.4 | Adapter compatibility; repeat account-specific live acceptance |
+| First-party Hermes | 0.21.5+3698.g6f7a799 | All three profiles returned served-model metadata in CLI; refreshed native picker visual acceptance pending |
+| Claude Code terminal | 2.1.259 | Experimental Anthropic transport tests; live API generation unverified |
+| Claude Desktop Chat/Cowork | No routing integration | Advice-only workflow; no subscription proxy claim |
+
 ## Automated gate
 
 ```sh
@@ -38,9 +51,11 @@ Representative classification tasks: “Rename a variable and fix a typo.”,
 architecture-heavy distributed-system design/proof task. Verify the served model
 when running actual client tasks, not just expected classifier labels.
 
-Restore Claude's own login before testing its optional route. Earlier live Claude
-inference could not be verified because OAuth refresh failed. A successful auth
-status command alone does not prove refresh/generation works.
+Test the optional Anthropic route only with authorized API authentication through
+the original client. Earlier Claude OAuth attempts failed; they are historical
+observations, not evidence of permitted or supported subscription routing. A
+successful auth status command alone does not prove generation works. See
+[authentication scope](CLIENTS.md#claude-code-terminal).
 
 Computer Use, broad compaction/resume, all coding tiers in normal Desktop, family
 entries in normal UI and reboot behavior remain separate acceptance checks.

@@ -57,6 +57,8 @@ CLI; visual acceptance of the refreshed native GUI remains outstanding.
 
 ## Hermes on Anthropic
 
+**Experimental API-auth route; no consumer subscription/OAuth support is claimed.**
+
 The installer also accepts an already configured `anthropic` or `claude` provider
 using a supported Messages transport. It points that provider at `/hermes/claude`
 and sets the virtual model to `jev-auto`. It preserves the existing provider and
@@ -68,6 +70,12 @@ Anthropic transport is covered by automated tests; real Anthropic authentication
 and generation still require live acceptance. A configured map is not evidence
 that those model IDs or effort levels are available on your account.
 
+Use your own authorized Anthropic API credentials and account; API charges are
+separate from a consumer Claude plan. The accepted `anthropic` / `claude` labels
+describe configuration shape, not permission to relay subscription credentials.
+The adapter does not enforce every possible credential source, so selecting an
+accepted provider is not authentication-policy validation.
+
 ## Claude Code terminal
 
 The optional `--claude` installer flag merges owned environment settings into
@@ -77,10 +85,17 @@ on the client version; it has not been verified in a live authenticated session.
 Unrelated hooks, plugins, MCP servers and settings are preserved.
 
 The integration forwards auth provided by the client; it neither obtains an
-Anthropic API key nor reads OAuth tokens. Existing subscription authentication
-through this route is **not proven**. Restore the client's normal login and check
-real response metadata before relying on it. Do not inject a dummy token or assume
-gateway support establishes subscription compatibility.
+Anthropic API key nor opens OAuth credential stores. Configure an authorized API
+credential using the client's normal secure mechanism and verify a real response
+before relying on this experimental route. Consumer subscription routing is not
+a supported feature, and working transport would not establish policy permission.
+Do not inject a dummy token or extract Claude session credentials.
+
+Anthropic's [authentication and credential-use policy](https://code.claude.com/docs/en/legal-and-compliance#authentication-and-credential-use)
+restricts third-party routing through consumer plan credentials. Their allowance
+for an end user signing into an unmodified native Claude Code client does not
+establish approval for every intervening third-party router. This project does
+not represent either provider's endorsement or approval.
 
 Claude defaults to per-turn classification when `routing.claude` is absent. You can
 choose conversation timing in settings. Tool-loop requests remain pinned either way.

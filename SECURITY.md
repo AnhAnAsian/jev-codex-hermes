@@ -23,8 +23,45 @@ Dependencies and client wire formats can change. Audit changes and re-run live
 acceptance checks when upgrading. No model safety or permission behavior is
 guaranteed merely by the proxy forwarding a request successfully.
 
-For private reports, contact the repository owner through a private channel;
-do not post credentials, task payloads or request dumps in issues.
+## Report a vulnerability
+
+For the public project, use **[GitHub's private security reporting form](https://github.com/AnhAnAsian/jev-codex-hermes/security/advisories/new)**.
+This is the intended confidential route, not a public issue. The maintainer must
+enable private vulnerability reporting when the repository becomes public; the
+form's availability is verified by `scripts/github-security.py`. If the form is
+unavailable, do not put exploit details or sensitive data into a public issue.
+An ordinary issue may report only that the confidential reporting form is missing.
+
+While the repository is private, existing authorized collaborators can use its
+[private issue tracker](https://github.com/AnhAnAsian/jev-codex-hermes/issues/new).
+That is not a reporting route for outside users and must not be used for sensitive
+reports after publication.
+
+Include the affected adapter/client versions, relevant route, expected/actual
+behavior and a minimal reproduction using synthetic credentials and task text.
+Never include live tokens, API keys, raw request dumps, private source or backups.
+There is no guaranteed response time or bug bounty; this is an independently
+maintained experimental project.
+
+## Continuous checks
+
+The Secret scan workflow runs on pushes, pull requests and manual dispatch. It
+scans full fetched Git history with a checksum-pinned Gitleaks CLI, read-only
+repository permissions and fully redacted output. It uses no paid scanning action,
+account keys or uploaded scan artifacts. It complements the package check and
+does not prove that all secrets or vulnerabilities are absent.
+
+After publication, run `python3 scripts/github-security.py --apply` to enable and
+verify GitHub private vulnerability reporting, secret scanning and push protection.
+The helper refuses to apply changes while private and never changes visibility
+or enables paid Advanced Security. See [release preparation](docs/PUBLIC-RELEASE.md).
+
+## Provider authentication scope
+
+Codex/Hermes Codex routing has live observations; this is not provider endorsement.
+Optional Anthropic routes are experimental API-auth integrations. Consumer
+subscription credential routing is not supported or promised. See the
+[client guide](docs/CLIENTS.md) and the linked provider policy before opting in.
 
 ## Local settings writes
 

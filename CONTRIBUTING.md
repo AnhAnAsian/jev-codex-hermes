@@ -42,6 +42,12 @@ Never commit task payloads, source snippets from private projects, tokens, keys,
 client configs, `.env` files or debug request dumps. Send security findings through
 a private channel as described in [SECURITY.md](SECURITY.md).
 
+Use your GitHub noreply email for commits if you don't want a personal address
+published. Set it for this checkout with `git config user.email` using the address
+from [GitHub email settings](https://github.com/settings/emails); this does not
+rewrite existing commits. Full-history secret scanning runs on pushes and PRs.
+Never merge a checkout from before an email-privacy rewrite into cleaned history.
+
 Upstream is pinned and unmodified. If an upstream change is needed, explain why
 the adapter cannot handle it, update the lock deliberately and rerun both suites.
 No blanket dependency updates or new gateway framework are needed for docs/UI polish.
