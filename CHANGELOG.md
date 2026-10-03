@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+Documentation polish: new routing-diagram banner, visible settings preview,
+clear client/evidence matrix and a focused client troubleshooting guide. Explicitly
+separated Claude Code terminal from Claude Desktop Chat/Cowork, clarified Anthropic
+provider activation and subscription limits, and corrected migration guidance.
+Added contribution instructions. Runtime, release version and installed settings
+are unchanged.
+
 ## 0.3.0 — 2026-10-03
 
 Editable routing profiles for mixed Jev, Luna-only, Sol-only and Claude; separate

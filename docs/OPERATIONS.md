@@ -36,7 +36,9 @@ edit the port, restart the service, then enable and restart clients.
 ## Existing installation / adapter migration
 
 The initial installer refuses to replace existing code or state. The original
-development setup remains installed independently of this repository.
+development installation has been migrated to this adapter; a fresh checkout and
+the running installation remain separate directories. Pulling Git does not update
+installed code, configuration or startup registration.
 
 To migrate intentionally: validate the new checkout first, record current
 mappings, use the old installation's disable/stop commands, and make private
@@ -89,3 +91,14 @@ for `jev` searches the entire provider catalog. A user-saved legacy custom row
 can still appear: this adapter does not edit desktop preferences. Inline non-empty
 provider/model YAML blocks are refused without mutation; expand them to ordinary
 block YAML before registering the overlay. No Hermes code/binary is patched.
+
+## Diagnose the right client
+
+The profile editor changes maps, not providers or logins. For picker IDs, Hermes
+aliases, the optional Anthropic route and Claude Desktop's advice-only workflow,
+use [the client guide](CLIENTS.md). Claude Desktop Chat/Cowork are not enabled by
+the `--claude` installer flag; that flag targets the Claude Code terminal client.
+
+The local advice page and settings page use the existing listener. Keeping them
+open does not verify model generation. Compare a bounded client's response with
+its routing receipt using [the live acceptance checklist](VALIDATION.md).

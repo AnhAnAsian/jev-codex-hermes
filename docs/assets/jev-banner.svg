@@ -1,15 +1,40 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
-<title id="title">Jev for Codex Desktop and Hermes</title><desc id="desc">One local router. Four editable tiers. Your existing subscriptions.</desc>
-<rect width="1200" height="360" rx="18" fill="#eef4fa"/>
-<path d="M0 320H1200" stroke="#d1dee9"/>
-<g font-family="Avenir Next,Segoe UI,Arial,sans-serif" fill="#193750">
-<text x="55" y="78" font-size="22" font-weight="700" letter-spacing="2">JEV / LOCAL ROUTER</text>
-<text x="50" y="157" font-size="58" font-weight="800" letter-spacing="-2">One choice.</text><text x="50" y="217" font-size="58" font-weight="800" letter-spacing="-2">A focused conversation.</text>
-<text x="55" y="270" font-size="19" fill="#536d81">Codex Desktop + Hermes · your existing subscriptions</text>
-<g font-size="16" font-weight="700"><text x="966" y="80">FAST</text><text x="966" y="142">BALANCED</text><text x="966" y="204">STRONG</text><text x="966" y="266">LONG</text></g>
-<text x="55" y="345" font-size="13" fill="#536d81">Classify once. Choose model + reasoning. Keep the conversation pinned.</text>
-<text x="992" y="345" font-size="13" fill="#536d81">127.0.0.1 only</text>
-</g>
-<g fill="none" stroke-width="4"><path d="M740 180H800Q825 180 825 155V85Q825 75 850 75H940" stroke="#14766d"/><path d="M740 180H825Q850 180 850 155V140Q850 137 875 137H940" stroke="#255b9a"/><path d="M740 180H825Q850 180 850 199Q850 199 875 199H940" stroke="#7263a7"/><path d="M740 180H800Q825 180 825 205V251Q825 261 850 261H940" stroke="#ae7315"/></g>
-<circle cx="740" cy="180" r="11" fill="#193750"/><g><circle cx="940" cy="75" r="7" fill="#14766d"/><circle cx="940" cy="137" r="7" fill="#255b9a"/><circle cx="940" cy="199" r="7" fill="#7263a7"/><circle cx="940" cy="261" r="7" fill="#ae7315"/></g>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="440" viewBox="0 0 1280 440" role="img" aria-labelledby="title desc">
+  <title id="title">Jev — let the task choose the model</title>
+  <desc id="desc">A local routing diagram: one task is classified into FAST, BALANCED, STRONG or LONG, then the chosen model is pinned. The highlighted balanced path is an illustration.</desc>
+  <defs>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#e1dceb" stroke-width="1"/></pattern>
+  </defs>
+  <rect width="1280" height="440" rx="20" fill="#f4f2f8"/>
+  <rect x="670" y="28" width="582" height="354" rx="16" fill="url(#grid)"/>
+  <path d="M48 380H1232" stroke="#d8d1e4"/>
+  <g font-family="Avenir Next,Segoe UI,Arial,sans-serif">
+    <text x="48" y="66" font-size="22" font-weight="800" letter-spacing="4" fill="#54438f">JEV</text>
+    <text x="124" y="64" font-size="14" font-weight="600" letter-spacing="1" fill="#766789">LOCAL MODEL ROUTER</text>
+    <g font-size="64" font-weight="800" letter-spacing="-2" fill="#30264f">
+      <text x="44" y="160">Let the task</text>
+      <text x="44" y="229">choose the model.</text>
+    </g>
+    <text x="48" y="285" font-size="21" fill="#665977">Codex Desktop + first-party Hermes</text>
+    <text x="48" y="320" font-size="18" fill="#665977">Your login. Your tools. A choice that stays.</text>
+    <text x="48" y="414" font-size="14" fill="#766789">CLASSIFY  →  CHOOSE  →  PIN</text>
+    <text x="1052" y="414" font-size="14" fill="#766789">127.0.0.1 only</text>
+  </g>
+  <g fill="none" stroke-linecap="round" stroke-width="3">
+    <path d="M708 219H754Q780 219 780 193V103Q780 87 804 87H905" stroke="#c5b9da"/>
+    <path d="M708 219H754Q795 219 795 184Q795 157 825 157H905" stroke="#167c7f" stroke-width="5"/>
+    <path d="M708 219H830Q850 219 850 227H905" stroke="#c5b9da"/>
+    <path d="M708 219H754Q780 219 780 245V281Q780 297 804 297H905" stroke="#c5b9da"/>
+    <path d="M1038 157H1095Q1115 157 1115 181V206" stroke="#167c7f" stroke-width="5"/>
+  </g>
+  <circle cx="708" cy="219" r="10" fill="#54438f"/>
+  <g font-family="Avenir Next,Segoe UI,Arial,sans-serif" font-size="14" font-weight="700">
+    <text x="696" y="252" fill="#766789">TASK</text>
+    <rect x="898" y="67" width="140" height="40" rx="10" fill="#e9e3f0"/><text x="920" y="92" fill="#766789">FAST</text>
+    <rect x="898" y="137" width="140" height="40" rx="10" fill="#167c7f"/><text x="914" y="162" fill="#fff">BALANCED</text>
+    <rect x="898" y="207" width="140" height="40" rx="10" fill="#e9e3f0"/><text x="920" y="232" fill="#766789">STRONG</text>
+    <rect x="898" y="277" width="140" height="40" rx="10" fill="#e9e3f0"/><text x="920" y="302" fill="#766789">LONG</text>
+    <rect x="1070" y="211" width="126" height="78" rx="12" fill="#fff" stroke="#b4d3d2"/>
+    <text x="1087" y="242" fill="#167c7f">CHOSEN</text><text x="1087" y="264" fill="#167c7f">&amp; PINNED</text>
+    <text x="898" y="353" font-size="12" font-weight="500" fill="#766789">Illustrated routing decision</text>
+  </g>
 </svg>

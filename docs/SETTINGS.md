@@ -85,6 +85,14 @@ Profile selection here edits configuration; choose the corresponding profile in
 your client to use it. Luna/Sol models and fallbacks must stay within their family.
 Reasoning uses catalog capabilities. Global tier switches apply to all profiles.
 
+The Claude / Anthropic profile is shared by the optional Claude Code terminal and
+Hermes Anthropic integrations. It does not switch Hermes away from Codex OAuth,
+authenticate an Anthropic account or add Jev to Claude Desktop Chat/Cowork.
+Anthropic models are configured IDs, not a discovered account catalog, and live
+Anthropic generation remains unverified. See [client support](CLIENTS.md).
+
 Timing is independent: Codex, Hermes and Claude can each choose once per conversation
 or once per new human turn. Tool loops stay pinned in either mode. Profile edits
 affect new conversations; explicit overrides retain their existing behavior.
+When `routing.claude` is absent, the optional Claude integration defaults to
+per-turn classification; the example Codex/Hermes maps use conversation timing.

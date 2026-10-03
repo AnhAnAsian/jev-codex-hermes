@@ -1,55 +1,66 @@
 <p align="center">
-  <img src="docs/assets/jev-banner.svg" alt="Jev: one choice, a focused conversation" width="100%">
+  <img src="docs/assets/jev-banner.svg" alt="Jev — let the task choose the model. Classify, choose, pin." width="100%">
 </p>
 
 <p align="center">
   <a href="https://github.com/AnhAnAsian/jev-desktop-hermes/actions/workflows/ci.yml"><img src="https://github.com/AnhAnAsian/jev-desktop-hermes/actions/workflows/ci.yml/badge.svg?branch=main" alt="Validation status"></a>
-  <img src="https://img.shields.io/badge/platform-macOS-193750" alt="macOS">
-  <img src="https://img.shields.io/badge/status-experimental-14766d" alt="Experimental">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-255b9a" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/install-macOS-54438f" alt="macOS installation">
+  <img src="https://img.shields.io/badge/release-0.3.0-167c7f" alt="Release 0.3.0">
+  <img src="https://img.shields.io/badge/status-experimental-70546f" alt="Experimental">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-54438f" alt="MIT license"></a>
 </p>
 
-# Jev for Codex Desktop & Hermes
+<p align="center">
+  <strong>Automatic model selection for Codex Desktop and first-party Hermes.</strong><br>
+  One local service. Editable reasoning tiers. Your existing client login.
+</p>
 
-**Pick Jev. Let it choose the model and reasoning effort. Keep your normal workflow.**
+<p align="center">
+  <a href="#get-started">Install</a> ·
+  <a href="#make-it-yours">Settings</a> ·
+  <a href="docs/CLIENTS.md">Client guide</a> ·
+  <a href="docs/OPERATIONS.md">Updates &amp; recovery</a> ·
+  <a href="docs/VALIDATION.md">Test evidence</a>
+</p>
 
-A lightweight localhost adapter around [flaviusapop/jev-router](https://github.com/flaviusapop/jev-router).
-Jev classifies your first task, selects an editable tier, and pins the real model
-for the conversation. No parent model needs to run before classification.
-Your coding client keeps its login, tools, permissions and sessions.
+## Choose Jev. Start your task.
 
-[Get started](#get-started) · [Settings](#settings-without-editing-json) · [How it works](#how-it-works) · [Limits](#what-is-verified)
+A typo and an unknown concurrency bug don't need the same model. Select **Jev**
+in your client and describe the task. Jev classifies it, chooses a real model and
+reasoning effort, then keeps that choice for the conversation by default.
 
-> **Experimental macOS software.** Automated tests run on macOS and Linux;
-> startup installation supports macOS. Live compatibility depends on your client
-> version and account. This repository is currently private.
+No answering model runs before the classifier. Coding requests continue through
+your original provider; the classifier uses separate OpenRouter credits or TypeSafe
+access. This is a small adapter around the unmodified
+[upstream Jev Router](https://github.com/flaviusapop/jev-router), not a new classifier.
 
-## What you get
+> **Experimental, with explicit limits.** macOS startup is supported; CI runs on
+> macOS and Linux. Live behavior depends on client versions, model access and auth.
+> Model switching does not guarantee prompt-cache hits.
 
-| In your workflow | What Jev adds |
-| :--- | :--- |
-| **Codex Desktop** | Jev, Jev Luna and Jev Sol in the normal model picker; parent request routing through a local Responses provider |
-| **Hermes** | `/model jev` on the existing Codex OAuth or supported Anthropic provider |
-| **Local settings** | Tier mappings, reasoning, pause/resume, routing mode, fallback and classification length |
-| **Codex CLI** | Compatible launcher and shared provider configuration |
-| **Claude Code** | Optional experimental integration; live authentication/generation still requires validation |
+## Where it works
 
-One service. No LiteLLM. No required OpenRouter coding-model provider.
-Astra/Fable are excluded from the default automatic mappings.
+| Client | How you use it | Current evidence |
+| :--- | :--- | :--- |
+| **Codex Desktop** | Select **Jev**, **Jev Luna** or **Jev Sol** in the normal picker | Parent request routing and served-model receipts observed |
+| **First-party Hermes** | `/model jev`, `/model jev-luna`, `/model jev-sol` on Codex OAuth; picker catalog entries also installed | All three profiles verified in the CLI; native GUI refresh still needs visual acceptance |
+| **Codex CLI** | Shared provider configuration or `jev-codex` | Adapter coverage; repeat live acceptance on your installation |
+| **Claude Code terminal / Hermes Anthropic** | Optional Anthropic proxy integration | Automated coverage; live Anthropic generation unverified |
+| **Claude Desktop Chat / Cowork** | Use the local **Ask Jev** page for advice, then choose a model manually | Automatic integration is not installed |
+
+The Anthropic map in settings is for the optional Anthropic integrations. It does
+**not** change Hermes's provider or add Jev to Claude Desktop. We keep Claude
+Desktop's normal login: its documented third-party gateway mode is a separate
+deployment, and subscription-preserving routing has not been established.
+See [client details and troubleshooting](docs/CLIENTS.md).
 
 ## Get started
 
-### Before installing
+You need **macOS, Node 22+, Python 3.11+, Git**, and Codex Desktop already signed
+in. Open Desktop's model picker once to populate its cached catalog. The installer
+checks that the default `gpt-6-luna` and `gpt-6.1-sol` models are available.
 
-You need **macOS, Node 22+, Python 3.11+, Git**, and Codex Desktop already signed in.
-Open Desktop's model picker once so its catalog is cached. The default installer
-checks for `gpt-6-luna` and `gpt-6.1-sol` on your account.
-
-Hermes is optional: set it up normally first, using an explicit supported provider
-(`openai-codex`, `anthropic` or `claude`). The installer preserves its provider and
-refuses unsupported transports instead of converting authentication.
-
-### Fresh installation
+### 1. Install on a fresh Mac
 
 ```sh
 git clone https://github.com/AnhAnAsian/jev-desktop-hermes.git
@@ -61,189 +72,151 @@ npm test --prefix upstream
 python3 scripts/install.py --hermes
 ```
 
-Omit `--hermes` for Desktop only. Add `--claude` only to opt into the experimental
-Claude integration. Use a Python 3.11+ interpreter explicitly if `python3` is older.
-Private repository access requires your existing GitHub authentication.
+The repository is private; cloning uses your existing GitHub authentication.
+Omit `--hermes` for Codex Desktop only. For Hermes, configure its normal provider
+first: `openai-codex`, `anthropic` or `claude`. The installer preserves it and
+refuses unsupported transports. Add `--claude` only for the experimental Claude
+Code terminal integration. Use an explicit Python 3.11+ executable if needed.
 
-**Already installed?** The installer intentionally refuses to overwrite existing
-code or private state. Follow [the upgrade procedure](docs/OPERATIONS.md#existing-installation--adapter-migration).
-`git pull` updates your checkout, not the installed service.
+**Already installed?** Use the [migration guide](docs/OPERATIONS.md#existing-installation--adapter-migration).
+The installer refuses to overwrite existing code or private state. Pulling the
+repository alone does not update the running service.
 
-### Add the classifier key privately
-
-Run in your own terminal; key entry is hidden:
+### 2. Add the classification key
 
 ```sh
 ~/.local/bin/jev-router key --openrouter
 ~/.local/bin/jev-router doctor
 ```
 
-For direct TypeSafe classification, use [the documented backend configuration](docs/SETTINGS.md).
-Never paste a key into chat. Your key is stored outside this repository with
-owner-only permissions. **Jev classification is a separate paid service:**
-OpenRouter credits or TypeSafe access are required; coding requests use your
-original provider/subscription.
+Enter the key privately in your terminal; input is hidden. Keys stay outside Git
+with owner-only permissions. For direct TypeSafe access, see
+[classifier settings](docs/SETTINGS.md#advanced-configuration).
 
-Restart enabled clients. Select **Jev** in a new Desktop chat or `/model jev` in
-Hermes. A user LaunchAgent starts the localhost service at login. You can use
-Desktop normally without starting a terminal wrapper.
+### 3. Select Jev in a new conversation
 
-## Settings without editing JSON
+Restart enabled clients. Choose **Jev** in Codex Desktop, or run `/model jev` in
+Hermes on Codex OAuth. A user LaunchAgent starts the router at login, so Desktop
+needs no terminal wrapper. Check a real response with `jev-router logs --follow`:
+the picker label alone doesn't prove which model answered.
+
+## Make it yours
 
 ```sh
 ~/.local/bin/jev-router settings
 ```
 
-Or open **[127.0.0.1:48767/settings](http://127.0.0.1:48767/settings)**.
+The [local settings page](http://127.0.0.1:48767/settings) is part of the same
+service. Model dropdowns use the local Codex catalog; reasoning choices follow
+known capabilities. Saved unlisted IDs remain visible with a warning.
 
-Use native model dropdowns populated from your local Codex catalog. Reasoning
-choices follow known model capabilities; unlisted saved IDs stay visible with a
-warning. Choose **Enter a custom model ID…** when needed.
+![Settings preview: Jev Sol profile, editable tier models and reasoning, separate client timing](docs/assets/settings.jpg)
 
-Choose a **routing profile**: Jev (mixed), Jev Luna, Jev Sol or the Claude mapping.
-Each has independent tier models, reasoning and fallback settings. Family profiles
-restrict suggestions and saved models to their own family. Selection timing is
-separate for Codex, Hermes and Claude.
+<sub>Example configuration. Classifier readiness is simulated; no private keys or client data are shown.</sub>
 
-Edit the model/reasoning for each tier, turn tiers on or off, select conversation
-or per-turn routing, choose the fallback, and limit the classification excerpt.
-Every save validates and merges your changes, creates a private backup, and
-rejects stale edits from another window. Keys and upstream URLs are not exposed.
+Choose a **routing profile** to edit its four tiers and fallback. Set selection
+timing separately for Codex, Hermes and Claude: once per conversation or once per
+new human turn. Editing a profile here doesn't activate it in a client.
 
-New chats use updated mappings; existing pinned chats keep their model and effort.
-After changing model IDs, run `jev-router refresh-catalog` and restart Desktop
-so its advertised context limits match the new map. Other settings reload live.
+| Profile | Model selection | Default FAST → LONG reasoning |
+| :--- | :--- | :--- |
+| **Jev** | Luna for FAST; Sol for the other tiers | medium · low · high · xhigh |
+| **Jev Luna** | Luna family only | low · medium · high · xhigh |
+| **Jev Sol** | Sol family only | low · medium · high · xhigh |
+| **Claude / Anthropic** | Haiku 4.5 · Sonnet 5.5 · Opus 5.5 · Opus 5.5 | default · high · high · xhigh |
 
-<details>
-<summary><strong>Preview the settings page</strong></summary>
+These are repository defaults, not a copy of your personal settings. Everything
+is editable in one `~/.config/jev-router/config.json`. Astra/Fable are excluded
+from automatic defaults. Available models and effort levels depend on the provider.
 
-![Jev settings page with editable tier models and reasoning](docs/assets/settings.jpg)
+Each save validates a bounded merge, makes a private backup and rejects stale edits.
+New conversations use the new map; existing pins keep their choice. After changing
+model IDs, run `jev-router refresh-catalog` and restart Desktop to refresh context
+metadata. Keys and upstream URLs aren't exposed in the editor.
 
-Preview uses example configuration and fake classifier readiness; no real key or private client data appears.
+Read [the settings guide](docs/SETTINGS.md) for exact behavior.
 
-</details>
-
-Pausing in settings keeps the proxy running and uses the configured fallback for
-Jev selections. For direct client operation, use `jev-router disable` and restart
-clients. Advanced settings stay in
-`~/.config/jev-router/config.json`. Read [the settings guide](docs/SETTINGS.md).
-
-## Default model map
-
-| Tier | Codex / Hermes Codex | Reasoning | Typical task |
-| :--- | :--- | :--- | :--- |
-| **FAST** | `gpt-6-luna` | medium | Small, familiar change |
-| **BALANCED** | `gpt-6.1-sol` | low | Everyday implementation |
-| **STRONG** | `gpt-6.1-sol` | high | Difficult debugging |
-| **LONG** | `gpt-6.1-sol` | xhigh | Deep architecture or reasoning |
-
-**Jev Luna** and **Jev Sol** stay within their respective families, using
-low / medium / high / xhigh. Those picker IDs are local aliases; the proxy
-translates them to real model IDs before inference.
-
-Claude defaults: Haiku 4.5 without effort, Sonnet 5.5 high, Opus 5.5 high and
-Opus 5.5 xhigh. Available models and reasoning levels depend on your account;
-Codex catalog metadata is used to normalize supported efforts.
-
-## How it works
+## One service, one chosen answering model
 
 ```mermaid
 flowchart LR
-    D[Codex Desktop / CLI] --> R[Local Jev Router\n127.0.0.1]
-    H[Hermes] --> R
-    C[Claude Code · optional] --> R
-    R --> J[Jev classification\nOpenRouter or TypeSafe]
-    J --> T[Model + reasoning tier]
-    T --> P[Original provider\nclient subscription / credentials]
+    C[Codex Desktop / CLI] --> R[Local Jev Router]
+    H[First-party Hermes] --> R
+    A[Claude Code · optional] --> R
+    R --> J[Jev classifier]
+    J --> T[FAST · BALANCED · STRONG · LONG]
+    T --> P[Selected model + reasoning]
+    P --> U[Original provider]
 ```
 
-The proxy advertises all three Codex profile IDs: `gpt-jev-auto`, `gpt-jev-luna`,
-and `gpt-jev-sol`. The legacy `jev-auto` alias stays usable but is hidden from the
-proxy catalog. Hermes also gets supported `providers.openai-codex.models` entries
-so the picker does not depend on live discovery. Existing aliases and OAuth remain
-unchanged. After an adapter upgrade, run `jev-router hermes-picker` and refresh
-models in Hermes or restart it.
+The adapter reuses upstream classification questions and decision policy. It adds
+picker catalogs, conversation pins, streaming transport and reversible config
+merges. Client authentication headers are forwarded transiently; OAuth login and
+refresh stay with the original clients. No LiteLLM or extra frontend server.
 
-The upstream classifier questions and decision policy are reused unchanged.
-The adapter handles client integration, conversation pins, capability checks,
-streaming and reversible configuration. OAuth stays with the clients; auth and
-account headers are forwarded transiently without reading client token stores.
+- **Keep the choice:** Codex/Hermes default to conversation routing; tool loops stay pinned. Optional Claude defaults to per-turn routing.
+- **Take control:** explicit tier directives bypass classification; regular real-model selections remain manual.
+- **Handle failure:** failed classification uses your saved fallback. A stopped proxy cannot forward requests.
+- **Inspect the result:** logs include routing decisions and served-model receipts. Outbound effort isn't independent provider confirmation.
+- **Protect the boundary:** only `127.0.0.1` listens. Metadata logs omit prompts, source code and credentials.
 
-- Classify once per conversation by default; tool loops keep the same choice.
-- Explicit directives such as `use fast tier: …` bypass classification.
-- Picking a regular real model preserves manual usage.
-- Independent subagent routing is possible when the client supplies enough identity.
-- Classification failure uses the saved fallback. An absent proxy cannot forward requests.
+Pins are held in memory and reset on restart. Subagents can route independently
+when the client supplies enough identity. The displayed picker effort isn't
+updated to reflect the selected backend effort.
 
-The Desktop effort label does not dynamically reflect Jev's applied effort.
-Check routing receipts instead of relying on the picker label.
+## Daily controls
 
-## Everyday controls
+Add `~/.local/bin` to your PATH for these shorter commands.
 
-Add `~/.local/bin` to your PATH for shorter commands.
-
-| Command | Purpose |
+| I want to… | Command |
 | :--- | :--- |
-| `jev-router settings` | Open local settings |
-| `jev-router status` / `doctor` | Service state / integration diagnostics |
-| `jev-router logs --follow` | Live routing metadata and served-model receipts |
-| `jev-router disable` / `enable` | Restore direct clients / re-enable routing; restart clients afterward |
-| `jev-router restart` | Restart the service; clears conversation pins |
-| `jev-router desktop-disable` | Restore only Desktop's provider/catalog |
-| `jev-router hermes-picker` | Register all three profiles in Hermes’s supported model catalog |
-| `jev-router refresh-catalog` | Refresh model metadata and picker catalog; restart Desktop afterward |
+| Edit maps / pause classification | `jev-router settings` |
+| Inspect decisions | `jev-router logs --follow` |
+| Check service / integration health | `jev-router status` / `jev-router doctor` |
+| Use clients directly / restore routing | `jev-router disable` / `jev-router enable`, then restart clients |
+| Restart the service | `jev-router restart` |
 
-`stop` restores client integrations before unloading startup. `start` registers
-and starts the service; `enable` applies client routing. The root
-[Ask Jev page](http://127.0.0.1:48767/) remains a manual recommendation tool.
+Pausing in settings keeps the proxy active and uses the configured fallback for
+Jev selections. Disabling restores owned client settings. `stop` restores clients
+before stopping the listener; `start` starts the service, while `enable` applies
+client routing. See [all operational controls](docs/OPERATIONS.md).
 
-## Privacy by default
+## Your text and your credentials
 
-Classification sends up to **8,000 characters of task text** to Jev through the
-selected backend. You can change that limit in settings. Do not submit text you
-cannot share with that service.
+**Classification is not local:** up to 8,000 task characters by default are sent
+to TypeSafe/Jev, directly or through OpenRouter. The limit is editable. Use a real
+manual model or disable routing when the text must not reach the classifier.
 
-The proxy binds to `127.0.0.1`; logs contain routing metadata, not prompts, source
-code, authorization headers or tokens. The settings API requires a same-origin
-request and a process-specific token for saves. It does not manage API keys.
-Local software running under your account can access the router.
+The service doesn't open client OAuth token stores. Logs use an allowlist of
+routing metadata. Browser saves require exact same-origin and a process-specific
+token. Local software under your account can still access the listener; localhost
+is not an authentication boundary. Details: [SECURITY.md](SECURITY.md).
 
-Read [SECURITY.md](SECURITY.md) for the trust boundary and reporting guidance.
+## Evidence, updates and recovery
 
-## What is verified
+The current gate covers **39 Node + 17 Python + 154 upstream tests**. CI runs
+without paid keys or client logins. See [validation](docs/VALIDATION.md) for dated
+live observations and the acceptance checklist for another Mac.
 
-Automated suites cover routing, HTTP/WebSocket transport, pinning, overrides,
-opaque authentication headers, capability normalization, settings saves, stale
-edits, installation failure recovery and selective configuration restoration.
-CI also runs the unchanged upstream suite, without paid keys or client logins.
+Live Anthropic generation, comprehensive Desktop Computer Use/compaction, all
+real coding tiers and reboot acceptance remain outstanding. Cache hits aren't
+guaranteed; cache-preserving `configuration_update` items aren't implemented.
+Linux CI doesn't imply a Linux startup installer.
 
-Normal Desktop parent routing and Hermes task/resume routing were observed on the
-original development setup. Provider metadata confirmed served models; reasoning
-was verified outbound, not independently acknowledged. The settings UI is checked
-in a browser at desktop/mobile widths. Private session receipts stay outside Git.
+The release pins unmodified upstream in `upstream.lock.json`. Updating this adapter
+and running `jev-router update` are different: the latter advances installed
+upstream only. Follow [updates and rollback](docs/OPERATIONS.md) deliberately.
 
-**Remaining limits:** conversation pins reset on restart; comprehensive Desktop
-Computer Use, compaction, all real tiers and Claude generation remain unverified.
-Cache hits are not guaranteed, and cache-preserving `configuration_update` items
-are not implemented. Linux CI does not imply a Linux startup installer.
+`jev-router uninstall` restores owned client settings and removes startup/command
+shims. It retains code, keys and backups for recovery; the guide explains
+[complete removal](docs/OPERATIONS.md#disable-and-uninstall).
 
-Use [the live acceptance checklist](docs/VALIDATION.md) on each target Mac.
+## Built on upstream, kept small
 
-## Updates & recovery
+Credit belongs to [flaviusapop/jev-router](https://github.com/flaviusapop/jev-router)
+for the classifier integration and decision policy. This project covers the
+Desktop/Hermes integration gap. See [NOTICE](NOTICE) and [MIT license](LICENSE).
 
-The adapter release locks the unmodified upstream revision in `upstream.lock.json`.
-Bootstrap installs locked dependencies. Updating upstream and updating this adapter
-are separate operations: `jev-router update` advances only the installed upstream.
-For reproducible updates, validate the checkout and follow
-[operations and migration](docs/OPERATIONS.md).
-
-`jev-router uninstall` restores owned client settings, removes startup and owned
-commands, and retains code, private keys and backups for recovery. After verifying
-normal clients work, follow [complete removal](docs/OPERATIONS.md#disable-and-uninstall).
-
-## Built on Jev
-
-This adapter exists because [jev-router](https://github.com/flaviusapop/jev-router)
-already provides the classification and routing policy. See [NOTICE](NOTICE) for
-attribution. Licensed [MIT](LICENSE). Independent project; not affiliated with
-OpenAI, Anthropic, OpenRouter, TypeSafe or upstream maintainers.
+Want to improve it? Start with [CONTRIBUTING.md](CONTRIBUTING.md).
+Independent project; not affiliated with OpenAI, Anthropic, Nous Research,
+OpenRouter, TypeSafe or the upstream maintainers.
