@@ -73,3 +73,19 @@ creates a private config backup and reloads settings without restarting the serv
 Model ID changes require `refresh-catalog` and Desktop restart for accurate context
 limits. Keys, endpoints and client activation remain advanced operations. See
 [SETTINGS.md](SETTINGS.md).
+
+## Hermes picker metadata
+
+`jev-router hermes-picker` advertises `gpt-jev-auto`, `gpt-jev-luna` and
+`gpt-jev-sol` under Hermes's supported `providers.openai-codex.models` overlay.
+It requires an active owned integration pointed at this proxy. It preserves
+provider credentials, real model metadata, aliases and unrelated fields, and
+records its additions for selective disable/uninstall restoration. The proxy
+also adds these IDs to the live Codex catalog and hides the legacy alias.
+
+Refresh models or restart Hermes after registering the metadata. The native
+composer may still honor its separately saved visible-model shortlist; searching
+for `jev` searches the entire provider catalog. A user-saved legacy custom row
+can still appear: this adapter does not edit desktop preferences. Inline non-empty
+provider/model YAML blocks are refused without mutation; expand them to ordinary
+block YAML before registering the overlay. No Hermes code/binary is patched.

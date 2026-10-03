@@ -13,7 +13,7 @@ def refresh_catalog():
         if mapping is None:continue
         template=copy.deepcopy(source)
         template.update(slug=slug,display_name=label,description=('Only '+family+' models. ' if family else '')+'Jev selects a tier once per conversation; manual tier overrides remain available.',visibility='list',supported_in_api=True,priority=len(virtual),upgrade=None,availability_nux=None,default_reasoning_level='low')
-        template['context_window']=min(m['context_window'] for m in models if m['slug'] in {spec['model'] for spec in mapping['tiers'].values()})
+        template['context_window']=min(m['context_window'] for m in models if m['slug'] in ({spec['model'] for spec in mapping['tiers'].values()} | {mapping['fallbackModel']}))
         virtual.append(template)
     write(CATALOG,json.dumps({'models':virtual+models},indent=2)+'\n')
 

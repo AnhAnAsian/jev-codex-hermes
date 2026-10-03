@@ -22,3 +22,10 @@ test('Dirty comparison resets after reverting edits and ignores disabled tier or
  const changed=structuredClone(settings);assert(settingsEqual(changed,settings));changed.providers.codex.tiers.FAST.effort='high';assert(!settingsEqual(changed,settings));changed.providers.codex.tiers.FAST.effort='medium';assert(settingsEqual(changed,settings));
  changed.disabledTiers=['FAST','LONG'];const reordered={...changed,disabledTiers:['LONG','FAST']};assert(settingsEqual(changed,reordered));
 });
+const {profileChoices,profileMap,profileError}=await import('../ui/settings-controls.js');
+test('Routing profiles restrict suggestions by family and keep separate drafts',()=>{
+ assert.deepEqual(profileChoices(settings).map(p=>p.id),['codex','luna','sol','claude']);
+ assert(modelChoices(data,'codex','luna').every(p=>p.id.endsWith('-luna')));assert(modelChoices(data,'codex','sol').every(p=>p.id.endsWith('-sol')));
+ const changed=structuredClone(settings);profileMap(changed,'luna').tiers.FAST.effort='high';assert.equal(profileMap(changed,'codex').tiers.FAST.effort,'medium');assert.equal(profileMap(changed,'sol').tiers.FAST.effort,'low');assert.equal(profileError(changed),null);
+ profileMap(changed,'luna').tiers.STRONG.model='gpt-6.1-sol';assert.equal(profileError(changed).profile,'luna');assert.equal(profileError(changed).field,'STRONG');
+});

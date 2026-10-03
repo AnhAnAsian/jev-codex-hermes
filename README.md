@@ -100,6 +100,11 @@ Use native model dropdowns populated from your local Codex catalog. Reasoning
 choices follow known model capabilities; unlisted saved IDs stay visible with a
 warning. Choose **Enter a custom model ID…** when needed.
 
+Choose a **routing profile**: Jev (mixed), Jev Luna, Jev Sol or the Claude mapping.
+Each has independent tier models, reasoning and fallback settings. Family profiles
+restrict suggestions and saved models to their own family. Selection timing is
+separate for Codex, Hermes and Claude.
+
 Edit the model/reasoning for each tier, turn tiers on or off, select conversation
 or per-turn routing, choose the fallback, and limit the classification excerpt.
 Every save validates and merges your changes, creates a private backup, and
@@ -120,7 +125,7 @@ Preview uses example configuration and fake classifier readiness; no real key or
 
 Pausing in settings keeps the proxy running and uses the configured fallback for
 Jev selections. For direct client operation, use `jev-router disable` and restart
-clients. Family variants and advanced settings stay in
+clients. Advanced settings stay in
 `~/.config/jev-router/config.json`. Read [the settings guide](docs/SETTINGS.md).
 
 ## Default model map
@@ -152,6 +157,13 @@ flowchart LR
     T --> P[Original provider\nclient subscription / credentials]
 ```
 
+The proxy advertises all three Codex profile IDs: `gpt-jev-auto`, `gpt-jev-luna`,
+and `gpt-jev-sol`. The legacy `jev-auto` alias stays usable but is hidden from the
+proxy catalog. Hermes also gets supported `providers.openai-codex.models` entries
+so the picker does not depend on live discovery. Existing aliases and OAuth remain
+unchanged. After an adapter upgrade, run `jev-router hermes-picker` and refresh
+models in Hermes or restart it.
+
 The upstream classifier questions and decision policy are reused unchanged.
 The adapter handles client integration, conversation pins, capability checks,
 streaming and reversible configuration. OAuth stays with the clients; auth and
@@ -178,6 +190,7 @@ Add `~/.local/bin` to your PATH for shorter commands.
 | `jev-router disable` / `enable` | Restore direct clients / re-enable routing; restart clients afterward |
 | `jev-router restart` | Restart the service; clears conversation pins |
 | `jev-router desktop-disable` | Restore only Desktop's provider/catalog |
+| `jev-router hermes-picker` | Register all three profiles in Hermes’s supported model catalog |
 | `jev-router refresh-catalog` | Refresh model metadata and picker catalog; restart Desktop afterward |
 
 `stop` restores client integrations before unloading startup. `start` registers

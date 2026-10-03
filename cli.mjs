@@ -148,7 +148,8 @@ try {
     const tasks=[['FAST','Rename a variable and fix a typo.'],['BALANCED','Add a small API endpoint following the existing project pattern.'],['STRONG','Debug an intermittent concurrency bug whose cause is unknown.'],['LONG','Design and prove a safe migration of a distributed scheduler from a single leader to multi-region consensus. Resolve partition tolerance, fencing, idempotency, crash recovery, rolling upgrades and conflicting invariants; analyze alternatives and provide correctness arguments.']];
     for(const [expected,prompt] of tasks){const r=await classify(prompt,c);console.log(JSON.stringify({expected,classified:r?({haiku:'FAST',sonnet:'BALANCED',opus:'STRONG',fable:'LONG'})[r.choice]:null,confidence:r?.confidence??null,classifier_model:r?.classifier_model??null,latency_ms:r?.ms??null,ok:Boolean(r)}));if(!r)process.exitCode=1;}
   }
-  else if(action==='enable'){await start();const c=readConfig();c.enabled=true;saveConfig(c);refreshCatalog();manage('enable');if(c.clients?.codex)manage('desktop-enable');console.log('Restart enabled clients and select Jev to route new conversations.');}
+  else if(action==='enable'){await start();const c=readConfig();c.enabled=true;saveConfig(c);refreshCatalog();manage('enable');if(c.clients?.hermes)manage('hermes-picker');if(c.clients?.codex)manage('desktop-enable');console.log('Restart enabled clients and select Jev to route new conversations.');}
+  else if(action==='hermes-picker')manage('hermes-picker');
   else if(action==='refresh-catalog'){refreshCatalog();await health();console.log('Runtime and Desktop picker catalogs refreshed from the client cache. Restart Desktop to reload the picker.');}
   else if(action==='update') {
     const upstream=path.join(ROOT,'upstream');
@@ -174,5 +175,5 @@ try {
   }
   else if(action==='uninstall'){manage('uninstall');console.log('For full removal including private key/backups, follow the uninstall instructions in README.md.');}
   else if(['claude','codex','hermes'].includes(action))await client(action,process.argv.slice(3));
-  else console.log('Usage: jev-router start|stop|restart|status|doctor|desktop-enable|desktop-disable|key [--openrouter]|classify-test|enable|disable|logs [--follow]|settings|config|uninstall|claude|codex|hermes');
+  else console.log('Usage: jev-router start|stop|restart|status|doctor|hermes-picker|desktop-enable|desktop-disable|key [--openrouter]|classify-test|enable|disable|logs [--follow]|settings|config|uninstall|claude|codex|hermes');
 }catch {console.error('Jev command failed. Run jev-router doctor, or jev-router disable to restore the normal clients.');process.exitCode=1;}

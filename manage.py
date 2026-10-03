@@ -140,6 +140,9 @@ def activate():
         journal();write(p,json.dumps(d,indent=2)+'\n')
     write(manifest_path,json.dumps({'active':True,'backup':str(backup),'changes':changes},indent=2)+'\n')
     print('Enabled client integration. Private backups: '+str(backup))
+    if hermes_enabled:
+        from hermes_picker import enable as enable_hermes_picker
+        enable_hermes_picker()
 def deactivate():
     if (ROOT/'desktop.py').exists():subprocess.run([sys.executable,str(ROOT/'desktop.py'),'disable'],check=True)
     manifest=read_json(STATE/'integration.json')
@@ -147,6 +150,9 @@ def deactivate():
     conflicts=[]
     for change in manifest['changes']:
         p=pathlib.Path(change['path']);text=p.read_text() if p.exists() else ''
+        if change['kind']=='yaml-picker':
+            from hermes_picker import restore
+            restored,issues=restore(text,change);conflicts.extend(issues);write(p,restored);continue
         if change['kind']=='yaml-alias':
             name=change.get('name','jev');hit=yaml_alias_block(text,name)
             if hit and hit[2]==change['installed_block']:
@@ -203,6 +209,7 @@ def main():
     if action=='install-service':service_install()
     elif action=='enable':activate()
     elif action=='disable':deactivate()
+    elif action=='hermes-picker':subprocess.run([sys.executable,str(ROOT/'hermes_picker.py')],check=True)
     elif action in ('desktop-enable','desktop-disable','desktop-refresh'):
         subprocess.run([sys.executable,str(ROOT/'desktop.py'),action.split('-')[1]],check=True)
     elif action=='uninstall':

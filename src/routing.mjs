@@ -108,12 +108,20 @@ export class RoutingEngine {
   }
   catalog(catalog) {
     this.seedModels(catalog);
-    const result=addJevModel(catalog);
+    const result=addJevModel(structuredClone(catalog));
     const auto=result.models?.find(m=>m.slug==='jev-auto');
     if (auto) {
-      const windows=Object.values(this.config().providers.codex.tiers).map(s=>this.models.get(s.model)?.context_window).filter(Number.isFinite);
-      if (windows.length) auto.context_window=Math.min(...windows);
-      auto.description='Automatic Jev routing; TypeSafe receives the latest task text.';
+      const config=this.config(),profiles=[['gpt-jev-auto','Jev',config.providers.codex],
+        ...['luna','sol'].filter(f=>config.variants?.codex?.[f]).map(f=>['gpt-jev-'+f,'Jev '+f[0].toUpperCase()+f.slice(1),config.variants.codex[f]])];
+      const virtual=profiles.map(([slug,display_name,p],priority)=>{
+        const windows=[...Object.values(p.tiers).map(s=>s.model),p.fallbackModel].map(id=>this.models.get(id)?.context_window).filter(Number.isFinite);
+        return {...auto,slug,display_name,priority,visibility:'list',upgrade:null,
+          description:'Jev routing profile; model and reasoning are configured in local settings.',
+          ...(windows.length?{context_window:Math.min(...windows)}:{})};
+      });
+      // Keep the upstream CLI alias usable, but avoid a duplicate visible picker row.
+      auto.visibility='hide';auto.description='Legacy Jev CLI alias.';
+      result.models=[...virtual,...result.models.filter(m=>!['gpt-jev-auto','gpt-jev-luna','gpt-jev-sol'].includes(m.slug))];
     }
     return result;
   }

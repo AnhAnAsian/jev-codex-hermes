@@ -292,3 +292,16 @@ test('Served-model receipts ignore model text in generated deltas',async()=>{
   inspect(Buffer.from('data: {"type":"response.output_text.delta","delta":"model: gpt-6-astra","model":"gpt-6-astra"}\n\n'));
   assert.equal(logs.length,0);inspect(Buffer.from('data: {"type":"response.created","response":{"model":"gpt-6-luna"}}\n\n'));assert.equal(logs[0].served_model,'gpt-6-luna');
 });
+test('Provider catalog advertises all routing profiles without duplicate legacy picker entries',()=>{
+ const cfg=structuredClone(c),engine=new RoutingEngine({config:()=>cfg,logger:()=>{}});
+ const input={models:[{slug:'gpt-6.1-sol',context_window:400000,visibility:'list'},{slug:'gpt-6-luna',context_window:200000,visibility:'list'}]};
+ const result=engine.catalog(input);assert.equal(input.models.length,2);
+ assert.deepEqual(result.models.filter(m=>m.slug.startsWith('gpt-jev-')).map(m=>[m.slug,m.display_name,m.context_window]),[['gpt-jev-auto','Jev',200000],['gpt-jev-luna','Jev Luna',200000],['gpt-jev-sol','Jev Sol',400000]]);
+ assert.equal(result.models.find(m=>m.slug==='jev-auto').visibility,'hide');const again=engine.catalog(result);assert.equal(again.models.filter(m=>m.slug.startsWith('gpt-jev-')).length,3);
+});
+test('Hermes HTTP model discovery exposes profile IDs with original real model metadata',async()=>{
+ const up=http.createServer((req,res)=>res.writeHead(200,{'content-type':'application/json'}).end(JSON.stringify({models:[{slug:'gpt-6.1-sol',context_window:400000,visibility:'list'},{slug:'gpt-6-luna',context_window:200000,visibility:'list'}]})));up.listen(0,'127.0.0.1');await once(up,'listening');
+ const cfg=structuredClone(c);cfg.providers.codex.upstream='http://127.0.0.1:'+up.address().port;const service=await startService({config:()=>cfg,port:0,logger:()=>{}});
+ try{const catalog=await(await fetch('http://127.0.0.1:'+service.port+'/hermes/codex/models?client_version=0.0.0')).json();assert(catalog.models.some(m=>m.slug==='gpt-jev-luna'&&m.visibility==='list'));assert(catalog.models.some(m=>m.slug==='gpt-jev-sol'&&m.visibility==='list'));assert(catalog.models.some(m=>m.slug==='gpt-6.1-sol'));}
+ finally{await service.close();await new Promise(r=>up.close(r));}
+});

@@ -33,7 +33,7 @@ there is no cross-process filesystem lock.
 
 The authoritative file remains `~/.config/jev-router/config.json`. The page only
 changes a bounded projection; classifier configuration, client flags, family
-variants, endpoints, port, Desktop mode and unknown extension fields are preserved.
+extension fields, endpoints, port, Desktop mode and unknown extension fields are preserved.
 Do not paste API keys into that file or into browser fields.
 
 To switch classification backend, first back up config.json and set `classifier`
@@ -42,7 +42,8 @@ Then use `jev-router key` or `jev-router key --openrouter` privately in a termin
 The hidden key command selects its backend and restarts the service. It clears
 conversation pins. Key values and upstream URLs are excluded from settings responses.
 
-Family-only mappings remain under `variants.codex.luna` / `variants.codex.sol`.
+Family-only mappings remain stored under `variants.codex.luna` / `variants.codex.sol`
+and are editable with the Profile selector.
 Client integration changes require the documented disable/enable procedure;
 changing only a client flag does not restore its configuration.
 
@@ -61,7 +62,8 @@ boundary against other local processes or untrusted extensions under your accoun
 Model and fallback controls use native dropdowns, including in the Codex in-app
 browser. Codex options come from the local catalog; configured Claude models are
 listed without claiming account discovery. Custom IDs remain available explicitly.
-Hidden and API-unavailable entries are omitted from suggestions. Saved IDs absent
+Hidden entries are omitted from suggestions. Codex-only models remain available:
+`supported_in_api` describes public API access, not the Codex subscription route. Saved IDs absent
 from the picker catalog are retained and flagged, never silently replaced.
 Astra/Fable choices are grouped as additional-credit models.
 
@@ -75,3 +77,14 @@ switching preserves drafts; the form is frozen during saves to avoid losing edit
 Advanced classification controls are collapsed by default, and disabled tiers
 disable their model/effort controls. Mode changes and global tier switches retain
 the existing backend behavior described above.
+
+## Routing profiles and selection timing
+
+The Profile selector edits Jev (mixed), Jev Luna, Jev Sol and the Claude mapping.
+Profile selection here edits configuration; choose the corresponding profile in
+your client to use it. Luna/Sol models and fallbacks must stay within their family.
+Reasoning uses catalog capabilities. Global tier switches apply to all profiles.
+
+Timing is independent: Codex, Hermes and Claude can each choose once per conversation
+or once per new human turn. Tool loops stay pinned in either mode. Profile edits
+affect new conversations; explicit overrides retain their existing behavior.

@@ -44,7 +44,7 @@ def main():
         dest.mkdir()
         for name in ['src','ui','scripts','test','docs','upstream','node_modules']:
             shutil.copytree(root/name,dest/name,ignore=shutil.ignore_patterns('__pycache__'))
-        for name in ['cli.mjs','desktop.py','manage.py','desktop-hook.mjs','config.example.json','package.json','package-lock.json','upstream.lock.json','README.md','LICENSE','NOTICE','SECURITY.md','CHANGELOG.md']:
+        for name in ['cli.mjs','desktop.py','manage.py','hermes_picker.py','desktop-hook.mjs','config.example.json','package.json','package-lock.json','upstream.lock.json','README.md','LICENSE','NOTICE','SECURITY.md','CHANGELOG.md']:
             shutil.copy2(root/name,dest/name)
         state.mkdir(parents=True,mode=0o700)
         c=json.loads((dest/'config.example.json').read_text())

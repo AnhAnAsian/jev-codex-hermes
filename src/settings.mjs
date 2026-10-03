@@ -32,7 +32,7 @@ export function validateConfig(c) {
     if(!['luna','sol'].includes(family) || !realModel(v.fallbackModel) || !v.fallbackModel.endsWith('-'+family) || !effort(v.fallbackEffort))throw new Error('invalid_variant_family');
     for(const tier of Object.keys(internal)) {
       const spec=v.tiers?.[tier];
-      if(!realModel(spec?.model) || !spec.model.endsWith('-'+family) || !['low','medium','high','xhigh'].includes(spec.effort))throw new Error('invalid_variant_tier');
+      if(!realModel(spec?.model) || !spec.model.endsWith('-'+family) || !effort(spec.effort))throw new Error('invalid_variant_tier');
     }
   }
   return c;

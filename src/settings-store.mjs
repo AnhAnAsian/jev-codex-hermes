@@ -11,12 +11,12 @@ function keys(x,expected) {
   if(!object(x) || Object.keys(x).length!==expected.length || expected.some(k=>!Object.hasOwn(x,k)))fail('invalid_settings');
 }
 export function editableSettings(c) {
+  const mapping=p=>({fallbackModel:p.fallbackModel,fallbackEffort:p.fallbackEffort,
+    tiers:Object.fromEntries(tiers.map(t=>[t,{model:p.tiers[t].model,effort:p.tiers[t].effort}]))});
   return {enabled:c.enabled,classificationMaxChars:c.classificationMaxChars,disabledTiers:[...c.disabledTiers],
-    routing:{codex:c.routing?.codex||'turn',hermes:c.routing?.hermes||'turn'},
-    providers:Object.fromEntries(['codex','claude'].map(name=>[name,{
-      fallbackModel:c.providers[name].fallbackModel,fallbackEffort:c.providers[name].fallbackEffort,
-      tiers:Object.fromEntries(tiers.map(t=>[t,{model:c.providers[name].tiers[t].model,effort:c.providers[name].tiers[t].effort}]))
-    }]))};
+    routing:{codex:c.routing?.codex||'turn',hermes:c.routing?.hermes||'turn',claude:c.routing?.claude||'turn'},
+    providers:Object.fromEntries(['codex','claude'].map(name=>[name,mapping(c.providers[name])])),
+    variants:{codex:Object.fromEntries(Object.entries(c.variants?.codex||{}).map(([family,p])=>[family,mapping(p)]))}};
 }
 export class SettingsStore {
   constructor({file=configPath,catalog=loadModelCatalog}={}) {this.file=file;this.catalog=catalog;}
@@ -24,7 +24,7 @@ export class SettingsStore {
     const text=fs.readFileSync(this.file,'utf8');
     const c=validateConfig(JSON.parse(text));
     const catalog=this.catalog();
-    const models=(Array.isArray(catalog?.models)?catalog.models:[]).filter(m=>m && m.visibility!=='hide' && m.supported_in_api!==false && typeof m.slug==='string' && /^[a-zA-Z0-9._\-:\[\]]{1,120}$/.test(m.slug) && !m.slug.includes('jev-'))
+    const models=(Array.isArray(catalog?.models)?catalog.models:[]).filter(m=>m && m.visibility!=='hide' && typeof m.slug==='string' && /^[a-zA-Z0-9._\-:\[\]]{1,120}$/.test(m.slug) && !m.slug.includes('jev-'))
       .map(m=>({id:m.slug,efforts:(Array.isArray(m.supported_reasoning_levels)?m.supported_reasoning_levels:[]).map(e=>e?.effort).filter(e=>typeof e==='string' && /^[a-z]{1,20}$/.test(e))}));
     return {revision:revision(text),settings:editableSettings(c),models,
       integrations:Object.fromEntries(['codex','hermes','claude'].map(n=>[n,c.clients[n]])),classifier:c.classifier?.provider||'typesafe'};
@@ -35,15 +35,20 @@ export class SettingsStore {
     const original=fs.readFileSync(this.file,'utf8');
     if(revision(original)!==input.revision)fail('settings_changed',409);
     const c=validateConfig(JSON.parse(original)),s=input.settings;
-    const previousModels=JSON.stringify(['codex','claude'].map(n=>[c.providers[n].fallbackModel,...tiers.map(t=>c.providers[n].tiers[t].model)]));
-    keys(s,['enabled','classificationMaxChars','disabledTiers','routing','providers']);
-    keys(s.routing,['codex','hermes']);keys(s.providers,['codex','claude']);
-    for(const name of ['codex','claude']) {
-      const p=s.providers[name];keys(p,['fallbackModel','fallbackEffort','tiers']);keys(p.tiers,tiers);
+    const modelIds=c=>[...['codex','claude'].map(n=>c.providers[n]),...Object.values(c.variants?.codex||{})].map(p=>[p.fallbackModel,...tiers.map(t=>p.tiers[t].model)]);
+    const previousModels=JSON.stringify(modelIds(c));
+    if(!object(s)||!object(s.routing))fail('invalid_settings');
+    keys(s,['enabled','classificationMaxChars','disabledTiers','routing','providers',...(Object.hasOwn(s,'variants')?['variants']:[])]);
+    keys(s.routing,['codex','hermes',...(Object.hasOwn(s.routing,'claude')?['claude']:[])]);keys(s.providers,['codex','claude']);
+    if(Object.hasOwn(s,'variants')){keys(s.variants,['codex']);keys(s.variants.codex,Object.keys(c.variants?.codex||{}));}
+    const merge=(target,p)=>{
+      keys(p,['fallbackModel','fallbackEffort','tiers']);keys(p.tiers,tiers);
       for(const t of tiers)keys(p.tiers[t],['model','effort']);
-      c.providers[name].fallbackModel=p.fallbackModel;c.providers[name].fallbackEffort=p.fallbackEffort;
-      for(const t of tiers)c.providers[name].tiers[t]={...c.providers[name].tiers[t],...p.tiers[t]};
-    }
+      target.fallbackModel=p.fallbackModel;target.fallbackEffort=p.fallbackEffort;
+      for(const t of tiers)target.tiers[t]={...target.tiers[t],...p.tiers[t]};
+    };
+    for(const name of ['codex','claude'])merge(c.providers[name],s.providers[name]);
+    for(const [family,p] of Object.entries(s.variants?.codex||{}))merge(c.variants.codex[family],p);
     c.enabled=s.enabled;c.classificationMaxChars=s.classificationMaxChars;c.disabledTiers=s.disabledTiers;
     c.routing={...c.routing,...s.routing};
     try{validateConfig(c);}catch{fail('invalid_settings');}
@@ -57,7 +62,7 @@ export class SettingsStore {
       if(fs.readFileSync(this.file,'utf8')!==original)fail('settings_changed',409);
       fs.renameSync(tmp,this.file);
     }finally{fs.rmSync(tmp,{force:true});}
-    const modelsChanged=previousModels!==JSON.stringify(['codex','claude'].map(n=>[c.providers[n].fallbackModel,...tiers.map(t=>c.providers[n].tiers[t].model)]));
+    const modelsChanged=previousModels!==JSON.stringify(modelIds(c));
     return {...this.read(),modelsChanged};
   }
 }

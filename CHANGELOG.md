@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 — 2026-10-03
+
+Editable routing profiles for mixed Jev, Luna-only, Sol-only and Claude; separate
+Codex/Hermes/Claude selection timing. Saves preserve profile extension fields and
+reject cross-family models. Catalog refresh includes profile fallback capacity.
+The proxy advertises all three canonical Jev picker IDs and hides the legacy alias.
+Hermes receives reversible supported provider-model metadata via `hermes-picker`,
+independent of alias commands and live discovery. No Hermes client code changes.
+
 ## 0.2.1 — 2026-10-03
 
 Replaced unreliable datalist model inputs with native model/fallback dropdowns.
