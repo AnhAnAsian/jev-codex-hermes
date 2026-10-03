@@ -71,3 +71,24 @@ with pending edits, custom-ID retention, discard, disabled-tier controls and a
 390 px layout were exercised in the Codex in-app browser against isolated example
 state. The browser reported no errors and no horizontal overflow at 390 px.
 The installed configuration remains separate from that test fixture.
+
+## Routing profiles / Hermes picker registration — 0.3.0
+
+The browser editor saved a Luna-only effort change independently of mixed/Sol
+maps; it persisted after reload. The installed page exposes mixed Jev, Jev Luna,
+Jev Sol and Claude maps, plus separate Codex/Hermes/Claude timing. Existing router
+configuration was preserved during the code upgrade. Hermes received only the
+owned `providers.openai-codex.models` additions, with a private configuration backup.
+The normal first-party `hermes config get providers.openai-codex.models` command
+confirmed all three canonical IDs. Alias commands and catalog declarations remain
+separate; the adapter now supplies both, without patching Hermes code or binaries.
+
+Live first-party CLI arithmetic probes returned `4` with served-model metadata:
+mixed Jev → GPT-6 Luna / high outbound; Jev Luna → GPT-6 Luna / low outbound;
+Jev Sol → GPT-6.1 Sol / low outbound. Luna completed with exit 0; the two initially
+capped two-turn probes exited nonzero, then both completed with exit 0 under the
+normal six-turn allowance. Reasoning effort is still verified outbound only.
+Native Hermes GUI visual acceptance remains pending: the native UI connection
+timed out. Reopen/refresh its model menu and search for `jev` to confirm its cached
+view reloads. The standalone Python catalog probe was abandoned because its
+assumed dependency environment did not match the normal launcher.
