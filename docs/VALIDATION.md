@@ -45,3 +45,21 @@ status command alone does not prove refresh/generation works.
 Computer Use, broad compaction/resume, all coding tiers in normal Desktop, family
 entries in normal UI and reboot behavior remain separate acceptance checks.
 CI is credential-free; passing it is not evidence of these live behaviors.
+
+## Settings acceptance — 0.2.0 / 2026-10-03
+
+The settings page was exercised in a real browser at desktop and 390 px mobile
+widths: reasoning changes saved and persisted after reload, mobile layout had no
+horizontal overflow, and the installed page had no console errors. A live save
+of unchanged settings preserved the private config byte-for-byte and created a
+backup. Tests cover invalid/unknown fields, stale revisions, origin/token checks,
+payload limits, metadata redaction and existing-chat pinning after map changes.
+
+The original development Mac was upgraded to 0.2.0 with private code/state/startup
+backups. Health and localhost binding passed. Live Jev classification responded;
+Hermes returned `4` for a bounded arithmetic task and the primary response metadata
+confirmed FAST / `gpt-6-luna`, with `medium` verified outbound only. A separate
+auxiliary Hermes request used the configured Sol fallback. Claude login still
+failed doctor. Post-upgrade normal Desktop generation, reboot, Computer Use and
+compaction remain separate acceptance checks; opening the settings page does not
+verify Desktop generation.

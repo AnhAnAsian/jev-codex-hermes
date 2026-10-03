@@ -16,6 +16,11 @@ test('Settings projection excludes private/advanced fields and backup preserves 
  assert.notEqual(saved.revision,input.revision);assert.equal(fs.statSync(file).mode&0o777,0o600);
  const backup=path.join(dir,'backups',fs.readdirSync(path.join(dir,'backups'))[0],'config.json');assert.equal(fs.readFileSync(backup,'utf8'),original);assert.equal(fs.statSync(backup).mode&0o777,0o600);
 });
+test('Settings metadata is bounded despite unknown client fields or malformed catalog entries',t=>{
+ const {file,c}=fixture(t);c.clients.privateExtension='do-not-expose';fs.writeFileSync(file,JSON.stringify(c));
+ const store=new SettingsStore({file,catalog:()=>({models:[null,{slug:'gpt-6-luna',supported_reasoning_levels:[null,{effort:'medium'}]},{slug:'gpt-6.1-sol',supported_reasoning_levels:{}},{slug:'invalid model'}]})});
+ const snapshot=store.read();assert.deepEqual(snapshot.integrations,{codex:true,hermes:false,claude:false});assert(!JSON.stringify(snapshot).includes('privateExtension'));assert.deepEqual(snapshot.models,[{id:'gpt-6-luna',efforts:['medium']},{id:'gpt-6.1-sol',efforts:[]}]);
+});
 test('Settings reject stale saves, prototype/unknown fields and invalid maps without writes',t=>{
  const {file,dir,store}=fixture(t),original=fs.readFileSync(file,'utf8'),snapshot=store.read();
  for(const alter of [s=>{s.port=80;},s=>{s.providers.codex.upstream='https://attacker.example';},s=>{s.providers.codex.tiers.FAST.model='gpt-jev-auto';},s=>{s.providers.codex.tiers.FAST.effort='bad';},s=>{s.routing.codex='invalid';},s=>{s.classificationMaxChars=90000;},s=>{s.disabledTiers=['UNKNOWN'];},s=>{s.enabled='false';},s=>{s.providers.codex.tiers.FAST.extra='bad';}]) {
