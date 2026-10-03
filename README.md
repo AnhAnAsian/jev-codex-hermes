@@ -1,9 +1,9 @@
 <p align="center">
-  <img src="docs/assets/jev-banner.svg" alt="Jev — let the task choose the model. Classify, choose, pin." width="100%">
+  <img src="docs/assets/jev-banner.svg" alt="Jev for Codex &amp; Hermes — let the task choose the model. Classify, choose, pin." width="100%">
 </p>
 
 <p align="center">
-  <a href="https://github.com/AnhAnAsian/jev-desktop-hermes/actions/workflows/ci.yml"><img src="https://github.com/AnhAnAsian/jev-desktop-hermes/actions/workflows/ci.yml/badge.svg?branch=main" alt="Validation status"></a>
+  <a href="https://github.com/AnhAnAsian/jev-codex-hermes/actions/workflows/ci.yml"><img src="https://github.com/AnhAnAsian/jev-codex-hermes/actions/workflows/ci.yml/badge.svg?branch=main" alt="Validation status"></a>
   <img src="https://img.shields.io/badge/install-macOS-54438f" alt="macOS installation">
   <img src="https://img.shields.io/badge/release-0.3.0-167c7f" alt="Release 0.3.0">
   <img src="https://img.shields.io/badge/status-experimental-70546f" alt="Experimental">
@@ -11,7 +11,8 @@
 </p>
 
 <p align="center">
-  <strong>Automatic model selection for Codex Desktop and first-party Hermes.</strong><br>
+  <strong>Jev for Codex &amp; Hermes</strong><br>
+  Automatic model selection for Codex Desktop and first-party Hermes.<br>
   One local service. Editable reasoning tiers. Your existing client login.
 </p>
 
@@ -63,8 +64,8 @@ checks that the default `gpt-6-luna` and `gpt-6.1-sol` models are available.
 ### 1. Install on a fresh Mac
 
 ```sh
-git clone https://github.com/AnhAnAsian/jev-desktop-hermes.git
-cd jev-desktop-hermes
+git clone https://github.com/AnhAnAsian/jev-codex-hermes.git
+cd jev-codex-hermes
 npm ci --ignore-scripts
 npm run bootstrap
 npm run validate

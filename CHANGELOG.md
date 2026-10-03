@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+Renamed the repository/package to `jev-codex-hermes`, with display name
+**Jev for Codex & Hermes**. Updated clone commands and CI badge links. The internal
+health service identifier remains `jev-desktop-hermes` for compatibility with
+existing CLI checks; installed commands, state paths and startup are unchanged.
+
 Documentation polish: new routing-diagram banner, visible settings preview,
 clear client/evidence matrix and a focused client troubleshooting guide. Explicitly
 separated Claude Code terminal from Claude Desktop Chat/Cowork, clarified Anthropic

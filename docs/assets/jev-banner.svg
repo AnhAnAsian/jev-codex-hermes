@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="440" viewBox="0 0 1280 440" role="img" aria-labelledby="title desc">
-  <title id="title">Jev — let the task choose the model</title>
+  <title id="title">Jev for Codex &amp; Hermes — let the task choose the model</title>
   <desc id="desc">A local routing diagram: one task is classified into FAST, BALANCED, STRONG or LONG, then the chosen model is pinned. The highlighted balanced path is an illustration.</desc>
   <defs>
     <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#e1dceb" stroke-width="1"/></pattern>
