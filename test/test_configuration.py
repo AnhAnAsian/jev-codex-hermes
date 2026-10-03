@@ -58,3 +58,79 @@ class ConfigurationTests(unittest.TestCase):
 
 if __name__=='__main__':
     unittest.main()
+
+class RecoveryTests(ConfigurationTests):
+    def test_hermes_rejects_unsupported_provider_before_any_writes(self):
+        for provider,mode in [('openrouter',None),('ollama',None),('openai-codex','chat_completions')]:
+            with tempfile.TemporaryDirectory() as temp:
+                h=pathlib.Path(temp);state=self.fixture(h,hermes=True)
+                p=h/'.hermes/config.yaml';p.parent.mkdir()
+                original=f'model:\n  provider: "{provider}"\n'+(f'  api_mode: "{mode}"\n' if mode else '')
+                p.write_text(original)
+                with patch.object(manage,'H',h),patch.object(manage,'STATE',state):
+                    with self.assertRaises(RuntimeError):manage.activate()
+                self.assertEqual(p.read_text(),original)
+                self.assertFalse((state/'backups').exists());self.assertFalse((state/'integration.json').exists());self.assertFalse((h/'.hermes/.env').exists())
+
+    def desktop_fixture(self,h):
+        state=self.fixture(h);config=h/'.codex/config.toml';config.parent.mkdir()
+        original='model = "gpt-6.1-sol"\n\n[mcp_servers.example]\ncommand = "example"\n'
+        config.write_text(original)
+        (h/'.codex/models_cache.json').write_text(json.dumps({'models':[{'slug':'gpt-6.1-sol','context_window':400000},{'slug':'gpt-6-luna','context_window':272000}]}))
+        return state,config,original
+
+    def test_desktop_semantic_restore_and_reenable_after_formatting(self):
+        with tempfile.TemporaryDirectory() as temp:
+            h=pathlib.Path(temp);state,config,original=self.desktop_fixture(h)
+            with patch.object(desktop,'H',h),patch.object(desktop,'STATE',state),patch.object(desktop,'CONFIG',config),patch.object(desktop,'RECORD',state/'desktop-picker.json'),patch.object(desktop,'CATALOG',state/'desktop-models.json'):
+                desktop.enable();text=config.read_text().replace('name = "Jev Router"','name="Jev Router" # comment').replace('wire_api = "responses"\nrequires_openai_auth = true','requires_openai_auth=true\nwire_api="responses"')
+                config.write_text(text);desktop.disable()
+                self.assertEqual(config.read_text(),original)
+                desktop.enable();desktop.disable();self.assertEqual(config.read_text(),original)
+
+    def test_desktop_nested_user_table_preserved_and_journal_recoverable(self):
+        with tempfile.TemporaryDirectory() as temp:
+            h=pathlib.Path(temp);state,config,original=self.desktop_fixture(h)
+            with patch.object(desktop,'H',h),patch.object(desktop,'STATE',state),patch.object(desktop,'CONFIG',config),patch.object(desktop,'RECORD',state/'desktop-picker.json'),patch.object(desktop,'CATALOG',state/'desktop-models.json'):
+                desktop.enable();config.write_text(config.read_text()+'\n[model_providers.jev.custom]\nvalue = "user"\n');desktop.disable()
+                record=json.loads((state/'desktop-picker.json').read_text());self.assertTrue(record['active']);self.assertIn('model_providers.jev',record['conflicts']);self.assertIn('value = "user"',config.read_text())
+                with self.assertRaises(RuntimeError):desktop.enable()
+                config.write_text(config.read_text().split('[model_providers.jev.custom]')[0]);desktop.disable()
+                self.assertFalse(json.loads((state/'desktop-picker.json').read_text())['active'])
+
+    def test_refresh_catalog_updates_actual_desktop_path_and_limits(self):
+        with tempfile.TemporaryDirectory() as temp:
+            h=pathlib.Path(temp);state,config,original=self.desktop_fixture(h)
+            with patch.object(desktop,'H',h),patch.object(desktop,'STATE',state),patch.object(desktop,'CONFIG',config),patch.object(desktop,'RECORD',state/'desktop-picker.json'),patch.object(desktop,'CATALOG',state/'desktop-models.json'):
+                desktop.enable()
+                parsed=__import__('tomllib').loads(config.read_text());target=pathlib.Path(parsed['model_catalog_json'])
+                cache=json.loads((h/'.codex/models_cache.json').read_text());cache['models'][1]['context_window']=200000;(h/'.codex/models_cache.json').write_text(json.dumps(cache))
+                desktop.refresh_catalog();self.assertEqual(json.loads(target.read_text())['models'][0]['context_window'],200000)
+
+class InstallerTests(ConfigurationTests):
+    def installer_fixture(self,h):
+        p=h/'.codex';p.mkdir();(p/'config.toml').write_text('model="gpt-6.1-sol"\n')
+        (p/'models_cache.json').write_text(json.dumps({'models':[{'slug':'gpt-6.1-sol','context_window':400000},{'slug':'gpt-6-luna','context_window':272000}]}))
+        spec=importlib.util.spec_from_file_location('installer',ROOT/'scripts/install.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
+
+    def test_verified_python_propagates_to_enable_and_failure_rolls_back(self):
+        for fail in [False,True]:
+            with tempfile.TemporaryDirectory() as temp:
+                h=pathlib.Path(temp);m=self.installer_fixture(h);calls=[];real_run=__import__('subprocess').run
+                def run(args,**kwargs):
+                    calls.append((args,kwargs))
+                    if args[-1]=='enable':
+                        self.assertEqual(kwargs['env']['JEV_PYTHON'],sys.executable)
+                        if fail:
+                            real_run([sys.executable,str(h/'.local/share/jev-router/desktop.py'),'enable'],check=True,env={**os.environ,'HOME':str(h),'JEV_SERVICE_HOME':str(h/'.config/jev-router')},capture_output=True)
+                            self.assertIn('model_provider = "jev"',(h/'.codex/config.toml').read_text())
+                            raise __import__('subprocess').CalledProcessError(1,args)
+                    if args[-1]=='disable':
+                        return real_run(args,env={**os.environ,'HOME':str(h),'JEV_SERVICE_HOME':str(h/'.config/jev-router')},**kwargs)
+                    return __import__('subprocess').CompletedProcess(args,0)
+                with patch.object(m.pathlib.Path,'home',return_value=h),patch.object(m.sys,'platform','darwin'),patch.object(m.sys,'argv',['install.py']),patch.object(m.subprocess,'run',side_effect=run),patch.object(m.shutil,'copytree',side_effect=lambda src,dst,**kw:pathlib.Path(dst).mkdir()):
+                    if fail:
+                        with self.assertRaisesRegex(RuntimeError,'clients restored'):m.main()
+                        self.assertFalse((h/'.local/share/jev-router').exists());self.assertFalse((h/'.local/bin/jev-router').exists());self.assertFalse((h/'.config/jev-router').exists())
+                        self.assertTrue(any(args[-1]=='disable' for args,kw in calls));self.assertEqual((h/'.codex/config.toml').read_text(),'model="gpt-6.1-sol"\n')
+                    else:m.main();self.assertIn('export JEV_PYTHON=',(h/'.local/bin/jev-router').read_text())

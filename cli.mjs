@@ -20,7 +20,7 @@ function manage(command) {
 function launch(args,quiet=false) {
   return spawnSync('/bin/launchctl',args,{stdio:quiet?'ignore':'pipe'});
 }
-async function health() {try{return await(await fetch(endpoint()+'/health',{signal:AbortSignal.timeout(2000)})).json();}catch{return {ok:false};}}
+async function health() {try{const h=await(await fetch(endpoint()+'/health',{signal:AbortSignal.timeout(2000)})).json();return h.service==='jev-desktop-hermes'?h:{ok:false,state:'unexpected-service'};}catch{return {ok:false};}}
 async function start() {
   if(!fs.existsSync(plist))manage('install-service');
   launch(['enable',`${domain}/${LABEL}`],true);
@@ -37,7 +37,9 @@ function refreshCatalog() {
   const catalog={models:JSON.parse(fs.readFileSync(p,'utf8')).models};
   const engine=new RoutingEngine({config:readConfig,logger:()=>{}});
   const out=engine.catalog(catalog);
-  fs.writeFileSync(path.join(home,'codex-models.json'),JSON.stringify(out,null,2)+'\n',{mode:0o600});
+  const target=path.join(home,'codex-models.json'),tmp=target+'.tmp';
+  fs.writeFileSync(tmp,JSON.stringify(out,null,2)+'\n',{mode:0o600});fs.renameSync(tmp,target);
+  manage('desktop-refresh');
 }
 function stop() {launch(['bootout',`${domain}/${LABEL}`],true);}
 async function privateKey() {
@@ -87,7 +89,7 @@ async function doctor() {
     const record=readJSON(path.join(home,'desktop-picker.json'));
     const cfg=text(path.join(os.homedir(),'.codex/config.toml'));
     const catalog=readJSON(path.join(home,'desktop-models.json'));
-    checks.push({check:'Desktop provider and picker configured',ok:record.active===true && cfg.includes(record.block||'UNCONFIGURED') && catalog.models?.some(m=>m.slug==='gpt-jev-auto'),detail:'Configuration check; a normal Desktop request is a separate acceptance test.'});
+    checks.push({check:'Desktop provider and picker configured',ok:record.active===true && spawnSync(process.env.JEV_PYTHON||'python3',['-c','import json,pathlib,sys,tomllib; c=tomllib.loads(pathlib.Path(sys.argv[1]).read_text()); r=json.loads(pathlib.Path(sys.argv[2]).read_text()); sys.exit(0 if c.get("model_providers",{}).get("jev")==r.get("provider") and c.get("model_provider")=="jev" and c.get("model_catalog_json")==sys.argv[3] else 1)',path.join(os.homedir(),'.codex/config.toml'),path.join(home,'desktop-picker.json'),path.join(home,'desktop-models.json')],{stdio:'ignore'}).status===0 && catalog.models?.some(m=>m.slug==='gpt-jev-auto'),detail:'Configuration check; a normal Desktop request is a separate acceptance test.'});
     const models=readJSON(path.join(os.homedir(),'.codex/models_cache.json')).models||[];
     for(const [tier,spec] of Object.entries(c.providers.codex.tiers)) {
       const model=models.find(m=>m.slug===spec.model);
@@ -147,7 +149,7 @@ try {
     for(const [expected,prompt] of tasks){const r=await classify(prompt,c);console.log(JSON.stringify({expected,classified:r?({haiku:'FAST',sonnet:'BALANCED',opus:'STRONG',fable:'LONG'})[r.choice]:null,confidence:r?.confidence??null,classifier_model:r?.classifier_model??null,latency_ms:r?.ms??null,ok:Boolean(r)}));if(!r)process.exitCode=1;}
   }
   else if(action==='enable'){await start();const c=readConfig();c.enabled=true;saveConfig(c);refreshCatalog();manage('enable');if(c.clients?.codex)manage('desktop-enable');console.log('Restart enabled clients and select Jev to route new conversations.');}
-  else if(action==='refresh-catalog'){refreshCatalog();console.log('Local Jev model catalog refreshed from the client cache.');}
+  else if(action==='refresh-catalog'){refreshCatalog();await health();console.log('Runtime and Desktop picker catalogs refreshed from the client cache. Restart Desktop to reload the picker.');}
   else if(action==='update') {
     const upstream=path.join(ROOT,'upstream');
     const old=spawnSync('git',['-C',upstream,'rev-parse','HEAD'],{encoding:'utf8'}).stdout.trim();

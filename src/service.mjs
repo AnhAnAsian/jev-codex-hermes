@@ -4,7 +4,7 @@ import https from 'node:https';
 import {once} from 'node:events';
 import {randomUUID} from 'node:crypto';
 import WebSocket,{WebSocketServer} from 'ws';
-import {readConfig,loadKey,safeLog} from './settings.mjs';
+import {readConfig,loadKey,safeLog,loadModelCatalog} from './settings.mjs';
 import {RoutingEngine} from './routing.mjs';
 
 function allowed(req) {
@@ -12,7 +12,7 @@ function allowed(req) {
   const host=req.headers.host?.split(':')[0];
   if(host!=='127.0.0.1' && host!=='localhost')return false;
   if(req.headers.origin) {
-    try {if(!['127.0.0.1','localhost'].includes(new URL(req.headers.origin).hostname))return false;}catch{return false;}
+    try {if(new URL(req.headers.origin).origin!==`http://${req.headers.host}`)return false;}catch{return false;}
   }
   return true;
 }
@@ -30,19 +30,35 @@ function forwardHeaders(source,target,ws=false) {
   headers['accept-encoding']='identity';
   return headers;
 }
-function servedInspector(receipt,transport,logger) {
+export function servedInspector(receipt,transport,logger) {
   let buffer='',done=false;
+  const inspect=line=>{
+    try {
+      const event=JSON.parse(line.startsWith('data:')?line.slice(5).trim():line);
+      // Read protocol metadata only; never infer a model from generated content.
+      const model=event.response?.model || (event.type==='message_start'?event.message?.model:!event.type?event.model:null);
+      if(typeof model==='string' && /^[a-zA-Z0-9._\-:\[\]]{1,120}$/.test(model)) {
+        done=true;logger({...receipt,transport,state:'served',served_model:model});
+      }
+    }catch{}
+  };
   return chunk=>{
     if(done)return;
     buffer+=chunk.toString('utf8');
-    const found=/"model"\s*:\s*"([a-zA-Z0-9._\-:\[\]]{1,120})"/.exec(buffer);
-    if(found) {done=true;logger({...receipt,transport,state:'served',served_model:found[1]});buffer='';}
-    else buffer=buffer.slice(-1024);
+    for(let end;(end=buffer.indexOf('\n'))>=0 && !done;) {
+      inspect(buffer.slice(0,end));buffer=buffer.slice(end+1);
+    }
+    if(!done)inspect(buffer); // complete non-streamed JSON / WebSocket frame
+    if(done || buffer.length>262144)buffer='';
   };
 }
-export async function startService({config=readConfig,classifier,logger=safeLog,port}={}) {
-  const initial=config(),engine=new RoutingEngine({config,classifier,logger});
-  const server=http.createServer(async(req,res)=>{
+export async function startService({config=readConfig,classifier,logger=safeLog,port,catalog=loadModelCatalog}={}) {
+  let snapshot=structuredClone(config()),degraded=false;
+  const initial=snapshot;
+  const current=()=>{try{snapshot=structuredClone(config());degraded=false;}catch{degraded=true;}return snapshot;};
+  const engine=new RoutingEngine({config:current,classifier,logger});
+  const refreshModels=()=>engine.seedModels(catalog());refreshModels();
+  const handler=async(req,res)=>{
     if(!allowed(req))return res.writeHead(403).end();
     const assets={'/':['index.html','text/html; charset=utf-8'],'/advice.js':['advice.js','text/javascript; charset=utf-8'],'/advice.css':['advice.css','text/css; charset=utf-8']};
     if(req.method==='GET' && assets[req.url]) {
@@ -64,7 +80,10 @@ export async function startService({config=readConfig,classifier,logger=safeLog,
         return res.writeHead(result.advice?200:503,{'content-type':'application/json'}).end(JSON.stringify(result));
       }catch{return res.writeHead(503,{'content-type':'application/json'}).end('{"error":"Advice unavailable. Keep your current model and try again."}');}
     }
-    if(req.url==='/health')return res.writeHead(200,{'content-type':'application/json'}).end(JSON.stringify({ok:true,enabled:config().enabled,keyAvailable:Boolean(loadKey(config())),classifier:config().classifier?.provider || 'typesafe',host:'127.0.0.1',port:server.address().port}));
+    if(req.url==='/health') {
+      const c=current();refreshModels();
+      return res.writeHead(degraded?503:200,{'content-type':'application/json'}).end(JSON.stringify({ok:!degraded,service:'jev-desktop-hermes',config_state:degraded?'last-valid':'valid',enabled:c.enabled,keyAvailable:Boolean(loadKey(c)),classifier:c.classifier?.provider || 'typesafe',host:'127.0.0.1',port:server.address().port}));
+    }
     if(req.url==='/desktop/decision' && req.method==='POST') {
       try {
         const chunks=[];let size=0;
@@ -76,7 +95,7 @@ export async function startService({config=readConfig,classifier,logger=safeLog,
     }
     if(req.method==='HEAD' && /^\/claude\/?$/.test(req.url))return res.writeHead(200).end();
     let r;
-    try {r=routePath(req.url,config());}catch{return res.writeHead(404).end();}
+    try {r=routePath(req.url,current());}catch{return res.writeHead(404).end();}
     let receipt={client:r.client,request_id:randomUUID(),state:'passthrough'};
     try {
       const chunks=[];let size=0;
@@ -117,11 +136,18 @@ export async function startService({config=readConfig,classifier,logger=safeLog,
       });
       upstream.end(out);
     }catch {if(!res.headersSent)res.writeHead(502);res.end();}
+  };
+  const server=http.createServer((req,res)=>{
+    handler(req,res).catch(()=>{
+      logger({state:'request-error'});
+      if(!res.headersSent)res.writeHead(503,{'content-type':'application/json'});
+      if(!res.writableEnded)res.end('{"error":"Router temporarily unavailable"}');
+    });
   });
   const wss=new WebSocketServer({noServer:true,maxPayload:32*1024*1024});
   server.on('upgrade',(req,socket,head)=>{
     if(!allowed(req))return socket.destroy();
-    let r;try{r=routePath(req.url,config());}catch{return socket.destroy();}
+    let r;try{r=routePath(req.url,current());}catch{return socket.destroy();}
     if(r.provider!=='codex')return socket.destroy();
     wss.handleUpgrade(req,socket,head,down=>{
       const target=new URL(r.target);target.protocol=target.protocol==='https:'?'wss:':'ws:';
@@ -129,7 +155,10 @@ export async function startService({config=readConfig,classifier,logger=safeLog,
       const connectionKey=randomUUID();let receipt={client:r.client,request_id:connectionKey,state:'websocket'},queue=Promise.resolve();
       let inspect=servedInspector(receipt,'websocket',logger);
       let opened=once(up,'open');opened.catch(()=>{});
+      let pendingBytes=0,pendingMessages=0;
       down.on('message',(data,binary)=>{
+        if(pendingMessages>=64 || pendingBytes+data.length>32*1024*1024){down.close(1009,'Queue limit');up.terminate();return;}
+        pendingBytes+=data.length;pendingMessages++;
         queue=queue.then(async()=>{
           let out=data;
           if(!binary)try{
@@ -141,7 +170,7 @@ export async function startService({config=readConfig,classifier,logger=safeLog,
           }catch{logger({...receipt,state:'ws-parse-fallback'});}
           await opened;
           if(up.readyState===WebSocket.OPEN)up.send(out,{binary});
-        }).catch(()=>{logger({...receipt,state:'ws-upstream-error'});down.close(1011,'Upstream unavailable');});
+        }).catch(()=>{logger({...receipt,state:'ws-upstream-error'});down.close(1011,'Upstream unavailable');}).finally(()=>{pendingBytes-=data.length;pendingMessages--;});
       });
       up.on('message',(data,binary)=>{
         if(!binary)inspect(data);

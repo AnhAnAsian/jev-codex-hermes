@@ -26,7 +26,9 @@ After confirming normal clients work, delete `~/.local/share/jev-router/` and
 `~/.config/jev-router/` to remove all remaining code, keys, logs and backups.
 Deletion of those backups is permanent; retain them until recovery is complete.
 
-Restoration preserves user-modified fields and reports conflicts. Do not
+Restoration preserves user-modified fields and reports conflicts. Desktop
+provider conflicts keep the ownership journal active: resolve the reported
+provider edit, then run `desktop-disable` again before re-enabling. Do not
 overwrite whole client config files or blindly copy a backup over new settings.
 Changing the listener port requires regenerating client integrations; disable,
 edit the port, restart the service, then enable and restart clients.
@@ -55,3 +57,11 @@ adapter. Prefer deliberate release changes for reproducible deployments.
 
 Conversation pins do not survive restarts. Do not treat an unchanged Jev picker
 label as a persistent backend-model guarantee after updating/rebooting.
+
+## Config edits and catalog refresh
+
+An invalid live configuration returns degraded health (503), while inference
+continues with the last validated snapshot. Repair the configuration to resume
+normal health. Startup still requires a valid config. `refresh-catalog` updates
+both generated catalogs and the running service metadata; restart Desktop to
+reload its picker. Only explicit supported Hermes providers are integrated.

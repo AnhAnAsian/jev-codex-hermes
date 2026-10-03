@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — 2026-10-03
+
+Fixed all nine initial review findings with routing, capability, configuration
+recovery, runtime catalog and installer regression tests. Added safe config
+snapshots and localhost/queue/CI hardening. See docs/REVIEW-FIXES.md.
+The separately installed personal router is unchanged.
+
 ## 0.1.0 — 2026-10-02
 
 Initial experimental macOS adapter release. Supported Codex provider/catalog

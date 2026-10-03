@@ -56,20 +56,32 @@ def set_jev_alias(text,block,name='jev'):
     if header:return text[:header.end()]+block+text[header.end():]
     return text+('' if text.endswith('\n') else '\n')+'model_aliases:\n'+block
 
+def hermes_provider(text):
+    line=yaml_model_line(text,'provider')
+    if not line:raise RuntimeError('Hermes requires an explicit supported provider; nothing changed')
+    provider=line[2].split(':',1)[1].split(' #',1)[0].strip().strip('"\'')
+    if provider not in ('openai-codex','anthropic','claude'):
+        raise RuntimeError('Unsupported Hermes provider: use the existing openai-codex or Anthropic provider; nothing changed')
+    mode=yaml_model_line(text,'api_mode')
+    if mode:
+        mode=mode[2].split(':',1)[1].split(' #',1)[0].strip().strip('"\'')
+        expected=('codex_responses',) if provider=='openai-codex' else ('anthropic','anthropic_messages','messages')
+        if mode not in expected:raise RuntimeError('Unsupported Hermes transport; nothing changed')
+    return provider
+
 def activate():
     config=current_config();base=f"http://127.0.0.1:{config['port']}"
     manifest_path=STATE/'integration.json'
     if read_json(manifest_path).get('active'):print('Client integration already enabled.');return
+    hermes_enabled=config.get('clients',{}).get('hermes',False)
+    claude_enabled=config.get('clients',{}).get('claude',False)
+    hermes_text=(H/'.hermes/config.yaml').read_text() if hermes_enabled else ''
+    provider=hermes_provider(hermes_text) if hermes_enabled else None
     stamp=datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%S.%fZ')
     backup=STATE/'backups'/stamp;backup.mkdir(parents=True,mode=0o700)
     changes=[]
     def journal():write(manifest_path,json.dumps({'active':True,'backup':str(backup),'changes':changes},indent=2)+'\n')
-    hermes_enabled=config.get('clients',{}).get('hermes',False)
-    claude_enabled=config.get('clients',{}).get('claude',False)
-    hermes_text=(H/'.hermes/config.yaml').read_text() if hermes_enabled else ''
-    provider_line=yaml_model_line(hermes_text,'provider') if hermes_enabled else None
-    hermes_provider=provider_line[2].split(':',1)[1].strip().strip('"\'') if provider_line else 'openai-codex'
-    hermes_claude=hermes_provider in ('anthropic','claude')
+    hermes_claude=provider in ('anthropic','claude')
     hermes_route='/hermes/claude' if hermes_claude else '/hermes/codex'
     # Integrate only explicitly enabled clients; Desktop is managed separately.
     plans=[('yaml',H/'.hermes/config.yaml',{'base_url':base+hermes_route,'default':'jev-auto' if hermes_claude else 'gpt-jev-auto','context_length':200000 if hermes_claude else 272000})] if hermes_enabled else []
@@ -191,7 +203,7 @@ def main():
     if action=='install-service':service_install()
     elif action=='enable':activate()
     elif action=='disable':deactivate()
-    elif action in ('desktop-enable','desktop-disable'):
+    elif action in ('desktop-enable','desktop-disable','desktop-refresh'):
         subprocess.run([sys.executable,str(ROOT/'desktop.py'),action.split('-')[1]],check=True)
     elif action=='uninstall':
         deactivate();subprocess.run(['launchctl','bootout',f'gui/{os.getuid()}/{LABEL}'],capture_output=True)

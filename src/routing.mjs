@@ -1,16 +1,20 @@
 import {createHash,randomUUID} from 'node:crypto';
 import {createClassifierClient} from './classifier-client.mjs';
 import {QUESTIONS,THRESHOLDS,availableTiers,TIERS} from '../upstream/src/config.mjs';
-import {decide,detectOverride,stripLengthHints} from '../upstream/src/policy.mjs';
+import {decide,detectOverride as upstreamOverride,stripLengthHints} from '../upstream/src/policy.mjs';
 import {newTurnPrompt,conversationKey,isAgentSession} from '../upstream/src/responses.mjs';
 import {newTurnPrompt as claudePrompt,conversationKey as claudeKey,sessionOf,isSubagentSpawn,applyTier,sanitizeSchema} from '../upstream/src/proxy.mjs';
-import {applyCodexTier,addJevModel} from '../upstream/src/codex-proxy.mjs';
+import {addJevModel} from '../upstream/src/codex-proxy.mjs';
 import {labels,loadKey,safeLog} from './settings.mjs';
 
 const variantFor=model=>({'gpt-jev-luna':'luna','gpt-jev-sol':'sol'})[model] || null;
 const inFamily=(model,family)=>model?.endsWith('-'+family);
 const hash=x=>createHash('sha256').update(String(x)).digest('hex');
-const exactModel=prompt=>/\b(?:use|switch to|with|on)\s+(?:the\s+)?((?:gpt-|claude-)[a-z0-9.\-[\]]+)\b/i.exec(prompt||'')?.[1] || null;
+const exactModel=prompt=>/^\s*(?:please\s+)?(?:use(?:\s+model\s*:)?|switch to)\s+(?:the\s+)?((?:gpt-|claude-)[a-z0-9.\-[\]]+)(?=$|[\s,:;])/i.exec(prompt||'')?.[1]?.toLowerCase() || null;
+const detectOverride=prompt=>{
+  const directive=/^\s*(?:please\s+)?(?:use|switch to)\s+(?:the\s+)?((?:gpt-|claude-)[a-z0-9.\-]+|haiku|sonnet|opus|luna|sol|fable|fast|balanced|strong|long|deep)(?:\s+(tier|model))?(?=$|[\s,:;])/i.exec(prompt||'');
+  return directive?upstreamOverride('use '+directive[1]+(directive[2]?' '+directive[2]:'')):null;
+};
 export async function classify(prompt,config) {
   const key=loadKey(config);
   if (!key) return null;
@@ -37,6 +41,7 @@ export class RoutingEngine {
     this.models=new Map();this.locks=new Map();
     this.hookTurns=new Map();
   }
+  remember(set,key) {set.add(key);if(set.size>2000)set.delete(set.values().next().value);}
   async advice({prompt,provider='codex'}) {
     const config=this.config();
     if(!config.enabled)return {error:'Routing is disabled. Enable the router before asking Jev.'};
@@ -44,7 +49,7 @@ export class RoutingEngine {
     const override=detectOverride(prompt),jev=override?null:await this.classifier(prompt,config);
     if(!jev && !override)return {error:'Jev is unavailable. Keep your current model and check jev-router doctor.'};
     // Advice has no active session/cache. Preserve upstream availability/override policy.
-    const result=decide({prompt,jev,current:'opus',available:availableTiers(),contextTokens:0});
+    const result=decide({prompt:override?prompt:'',jev,current:'opus',available:availableTiers(),contextTokens:0});
     const spec=p.tiers[labels[result.tier]];
     const advice={tier:labels[result.tier],model:spec.model,effort:spec.effort,
       confidence:jev?.confidence??null,latency_ms:Date.now()-started,classifier_model:jev?.classifier_model??null};
@@ -64,7 +69,7 @@ export class RoutingEngine {
       const started=Date.now();
       const jev=override?null:await this.classifier(prompt,config);
       if(!jev && !override) {this.logger({client:'codex-desktop',state:'jev-unavailable',latency_ms:Date.now()-started});return null;}
-      const result=decide({prompt,jev,current:'opus',available:availableTiers(),contextTokens:0});
+      const result=decide({prompt:override?prompt:'',jev,current:'opus',available:availableTiers(),contextTokens:0});
       const spec=p.tiers[labels[result.tier]];
       const decision={tier:labels[result.tier],model:spec.model,effort:spec.effort,confidence:jev?.confidence??null,state:result.reason};
       this.logger({client:'codex-desktop',...decision,latency_ms:Date.now()-started});
@@ -73,8 +78,36 @@ export class RoutingEngine {
     this.hookTurns.set(key,pending);if(this.hookTurns.size>2000)this.hookTurns.delete(this.hookTurns.keys().next().value);
     return pending;
   }
+  seedModels(catalog) {
+    if(!Array.isArray(catalog?.models))return;
+    const validated=new Map();
+    for(const m of catalog.models) {
+      if(typeof m?.slug!=='string' || !/^[a-zA-Z0-9._\-:\[\]]{1,120}$/.test(m.slug) || m.slug.includes('jev-'))continue;
+      if(m.context_window!=null && (!Number.isFinite(m.context_window) || m.context_window<=0))continue;
+      const levels=m.supported_reasoning_levels;
+      if(levels!=null && (!Array.isArray(levels) || levels.some(x=>typeof x?.effort!=='string' || !/^[a-z][a-z0-9_-]{0,30}$/.test(x.effort))))continue;
+      validated.set(m.slug,m);
+    }
+    if(validated.size)this.models=validated;
+  }
+  normalize(body,codex) {
+    if(codex) {
+      const info=this.models.get(body.model),levels=info?.supported_reasoning_levels?.map(x=>x.effort);
+      if(levels?.length && body.reasoning?.effort && !levels.includes(body.reasoning.effort)) {
+        body.reasoning.effort=levels.includes(info.default_reasoning_level)?info.default_reasoning_level:levels[0];
+      }
+    } else if(/^claude-haiku(?:$|-)/.test(body.model)) {
+      const model=body.model;
+      applyTier(body,'haiku'); // upstream strips thinking/context edits and unsupported effort
+      body.model=model;
+      if(body.output_config){delete body.output_config.effort;if(!Object.keys(body.output_config).length)delete body.output_config;}
+    } else if(/^claude-(?:sonnet|opus)-5-5(?:$|-)/.test(body.model) && body.thinking) {
+      const {budget_tokens,...thinking}=body.thinking;
+      body.thinking={...thinking,type:'adaptive'};
+    }
+  }
   catalog(catalog) {
-    for (const m of catalog.models || []) this.models.set(m.slug,m);
+    this.seedModels(catalog);
     const result=addJevModel(catalog);
     const auto=result.models?.find(m=>m.slug==='jev-auto');
     if (auto) {
@@ -89,7 +122,7 @@ export class RoutingEngine {
     // Transport metadata is used for identity only and is never forwarded into
     // the body. Authentication and account header values are never inspected.
     const identity=codex ? {...body,client_metadata:{...body.client_metadata,
-      thread_id:body.client_metadata?.thread_id || headers.session_id || headers['x-session-id'] || (!body.prompt_cache_key ? connectionKey : '') || undefined}} : body;
+      thread_id:body.client_metadata?.thread_id || headers.session_id || headers['x-session-id'] || connectionKey || undefined}} : body;
     const variant=codex?variantFor(body.model):null;
     const key=client+':'+(codex ? conversationKey(identity) : claudeKey(body,headers))+(variant?':'+variant:'');
     const before=this.locks.get(key) || Promise.resolve();
@@ -109,7 +142,7 @@ export class RoutingEngine {
     receipt.subagent=subagent;
     const automatic=body.model==='jev-auto' || (codex && (body.model==='gpt-jev-auto' || variant)) || (!codex && subagent);
     if (!automatic) {
-      if(prompt && state) this.manual.add(key);
+      if(prompt && state) this.remember(this.manual,key);
       return {body,receipt:{...receipt,state:'manual'}};
     }
     const fallback=state?.spec || {model:p.fallbackModel,effort:p.fallbackEffort};
@@ -117,18 +150,19 @@ export class RoutingEngine {
       body.model=spec.model;
       if(codex && spec.effort)body.reasoning={...body.reasoning,effort:spec.effort};
       else if(!codex && spec.effort)body.output_config={...body.output_config,effort:spec.effort};
+      this.normalize(body,codex);
     };
     if (!config.enabled || !config.clients[client]) {
       applySpec({model:p.fallbackModel,effort:p.fallbackEffort});
-      return {body,receipt:{...receipt,model:body.model,effort:p.fallbackEffort,state:'disabled'}};
+      return {body,receipt:{...receipt,model:body.model,effort:body.reasoning?.effort ?? body.output_config?.effort ?? null,state:'disabled'}};
     }
     const agentTools=(Array.isArray(body.tools) && body.tools.length>0) || body.input?.some(item=>item.type==='additional_tools');
-    if(codex && (!isAgentSession(identity) || !agentTools)) {
+    if(codex && !state?.lastFingerprint && (!isAgentSession(identity) || !agentTools)) {
       applySpec({model:p.fallbackModel,effort:p.fallbackEffort});
       return {body,receipt:{...receipt,model:body.model,effort:body.reasoning?.effort ?? body.output_config?.effort ?? null,state:'auxiliary'}};
     }
     if(!codex)body.tools?.forEach(t=>sanitizeSchema(t.input_schema));
-    if(!codex && session)this.routedSessions.add(session);
+    if(!codex && session)this.remember(this.routedSessions,session);
     let s=state || {spec:fallback,tier:'opus',cheapStreak:0,lastFingerprint:null};
     this.states.set(key,s);
     if(this.states.size>2000)this.states.delete(this.states.keys().next().value);
@@ -152,7 +186,7 @@ export class RoutingEngine {
       elapsed=Date.now()-started;
       // A new virtual-model conversation has no established routed-model cache yet.
       const policyContextTokens=s.lastFingerprint?contextTokens:0;
-      const decision=decide({prompt,jev,current,available,contextTokens:policyContextTokens,cheapStreak:s.cheapStreak});
+      const decision=decide({prompt:override?prompt:'',jev,current,available,contextTokens:policyContextTokens,cheapStreak:s.cheapStreak});
       tier=decision.tier;reason=decision.reason;s.cheapStreak=decision.cheapStreak;
       let spec=(jev || override) ? p.tiers[labels[tier]] : fallback;
       if(exact && (!variant || inFamily(exact,variant))){spec={model:exact,effort:body.reasoning?.effort ?? body.output_config?.effort ?? fallback.effort};reason='explicit-model';}
@@ -163,22 +197,9 @@ export class RoutingEngine {
       const window=codex && this.models.get(spec.model)?.context_window;
       if(window && contextTokens>window*0.9) {spec=fallback;tier=s.tier;reason='context-capacity-fallback';}
       s.spec=spec;s.tier=tier;s.lastFingerprint=fingerprint;
-      if(subagent && !codex)this.subagents.add(key);
+      if(subagent && !codex)this.remember(this.subagents,key);
     }
-    // Use upstream capability conversion only when the selected specification
-    // is a tier. On classifier failure the client's original default is kept.
-    const tierTarget=p.tiers[labels[s.tier]];
-    if(!variant && s.spec.model===tierTarget.model && s.spec.effort===tierTarget.effort) {
-      if(codex)applyCodexTier(body,s.tier,this.models);else applyTier(body,s.tier);
-    } else applySpec(s.spec);
-    if(!codex && /^claude-(?:sonnet|opus)-5-5(?:$|-)/.test(body.model)) {
-      // 5.5 rejects disabled/manual-budget thinking. Adaptive also permits
-      // tier effort to vary per turn, unlike between_tools.
-      if(body.thinking && body.thinking.type!=='adaptive') {
-        const {budget_tokens,...thinking}=body.thinking;
-        body.thinking={...thinking,type:'adaptive'};
-      }
-    }
+    applySpec(s.spec);
     const final={...receipt,tier:labels[s.tier],model:body.model,effort:body.reasoning?.effort ?? body.output_config?.effort ?? null,
       confidence:jev?.confidence ?? null,latency_ms:elapsed,state:reason};
     this.logger(final);

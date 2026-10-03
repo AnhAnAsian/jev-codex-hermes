@@ -222,3 +222,73 @@ test('Switching family choices in the same thread cannot inherit the other famil
   }
   assert.equal(calls,2);
 });
+
+test('Model mentions, quotes, code and negation never select an exact extra-credit model',async()=>{
+  let calls=0;const e=new RoutingEngine({config:()=>c,classifier:async()=>{calls++;return {choice:'haiku',confidence:1};},logger:()=>{}});
+  for(const [i,prompt] of ['What is wrong with gpt-6-astra?','Compare gpt-6-astra with gpt-6-luna','Do not use gpt-6-astra','"use gpt-6-astra" is a quoted instruction','```\nuse gpt-6-astra\n```','Explain running on gpt-6-astra'].entries()) {
+    const r=await e.rewrite(body(prompt,'mention-'+i),'codex','codex');assert.equal(r.body.model,'gpt-6-luna');
+  }
+  assert.equal(calls,6);
+  const explicit=await e.rewrite(body('Use model: gpt-6-astra: calculate','clear-directive'),'codex','codex');assert.equal(explicit.body.model,'gpt-6-astra');assert.equal(calls,6);
+});
+
+test('Final capability guards apply to exact selections, variants and disabled fallbacks',async()=>{
+  const e=new RoutingEngine({config:()=>c,classifier:async()=>({choice:'fable',confidence:1}),logger:()=>{}});
+  for(const enabled of [true,false]) {
+    const cfg=structuredClone(c);cfg.enabled=enabled;cfg.providers.claude.fallbackModel='claude-haiku-4-5-20251001';
+    const engine=new RoutingEngine({config:()=>cfg,logger:()=>{}});
+    const r=await engine.rewrite({model:'jev-auto',messages:[{role:'user',content:'use claude-haiku-4-5-20251001: test'}],thinking:{type:'adaptive'},output_config:{effort:'high',format:{type:'json_schema'}},context_management:{edits:[{type:'clear_thinking_20251015'}]}},'claude','claude');
+    assert(!r.body.thinking);assert(!r.body.output_config.effort);assert(r.body.output_config.format);assert(!r.body.context_management);
+  }
+  e.seedModels({models:[{slug:'gpt-6-luna',context_window:272000,supported_reasoning_levels:[{effort:'low'},{effort:'medium'}],default_reasoning_level:'medium'}]});
+  const b=body('use long tier','clamp');b.model='gpt-jev-luna';assert.equal((await e.rewrite(b,'codex','codex')).body.reasoning.effort,'medium');
+});
+
+test('WebSocket tool-only continuation inherits model and effort without repeated tools',async()=>{
+  const up=http.createServer();const wss=new WebSocketServer({server:up});const received=[];
+  wss.on('connection',ws=>ws.on('message',data=>{received.push(JSON.parse(data));ws.send(JSON.stringify({type:'response.completed',response:{id:'response-test',model:received.at(-1).model}}));}));
+  up.listen(0,'127.0.0.1');await once(up,'listening');
+  const cfg=structuredClone(c);cfg.providers.codex.upstream='http://127.0.0.1:'+up.address().port;
+  let calls=0;const service=await startService({config:()=>cfg,port:0,classifier:async()=>{calls++;return {choice:'haiku',confidence:1};},logger:()=>{}});
+  const ws=new WebSocket('ws://127.0.0.1:'+service.port+'/codex/responses');
+  try {
+    await once(ws,'open');const first=body('fix typo','ws-continuation');first.type='response.create';ws.send(JSON.stringify(first));await once(ws,'message');
+    ws.send(JSON.stringify({type:'response.create',model:'gpt-jev-auto',previous_response_id:'response-test',client_metadata:{thread_id:'ws-continuation'},input:[{type:'function_call_output',call_id:'1',output:'done'}]}));await once(ws,'message');
+    assert.equal(received[1].model,received[0].model);assert.equal(received[1].reasoning.effort,received[0].reasoning.effort);assert.equal(calls,1);
+  }finally{ws.terminate();await service.close();for(const client of wss.clients)client.terminate();await new Promise(r=>up.close(r));}
+});
+
+test('Malformed live config reports degraded health without crashing or losing inference',async()=>{
+  let invalid=false;const up=http.createServer((req,res)=>res.end('{"model":"gpt-6-luna"}'));up.listen(0,'127.0.0.1');await once(up,'listening');
+  const cfg=structuredClone(c);cfg.providers.codex.upstream='http://127.0.0.1:'+up.address().port;
+  const service=await startService({config:()=>{if(invalid)throw Error('synthetic-invalid-config');return cfg;},port:0,classifier:async()=>({choice:'haiku',confidence:1}),logger:()=>{}});
+  try {
+    invalid=true;const base='http://127.0.0.1:'+service.port;
+    const h=await fetch(base+'/health');assert.equal(h.status,503);assert.equal((await h.json()).config_state,'last-valid');
+    const r=await fetch(base+'/codex/responses',{method:'POST',body:JSON.stringify(body('task')),headers:{'content-type':'application/json'}});assert.equal(r.status,200);
+    invalid=false;assert.equal((await (await fetch(base+'/health')).json()).service,'jev-desktop-hermes');
+    assert.equal((await fetch(base+'/health',{headers:{origin:'http://127.0.0.1:1'}})).status,403);
+  }finally{await service.close();await new Promise(r=>up.close(r));}
+});
+
+test('Configuration schema rejects missing tiers, invalid efforts and recursive fallbacks',async()=>{
+  const {validateConfig}=await import('../src/settings.mjs');assert.equal(validateConfig(structuredClone(c)).port,c.port);
+  for(const mutate of [cfg=>delete cfg.providers.codex.tiers.FAST,cfg=>cfg.providers.codex.fallbackModel='gpt-jev-auto',cfg=>cfg.providers.codex.tiers.FAST.effort='typo',cfg=>cfg.clients.codex='yes',cfg=>cfg.disabledTiers=['BOGUS']]) {
+    const cfg=structuredClone(c);mutate(cfg);assert.throws(()=>validateConfig(cfg));
+  }
+});
+
+test('Runtime seeds model availability and capabilities without a GET models request',async()=>{
+  const service=await startService({config:()=>c,port:0,catalog:()=>({models:[{slug:'gpt-6.1-sol',context_window:400000,default_reasoning_level:'low',supported_reasoning_levels:[{effort:'low'}]}]}),classifier:async()=>({choice:'haiku',confidence:1}),logger:()=>{}});
+  try {
+    assert(service.engine.models.has('gpt-6.1-sol'));
+    const r=await service.engine.rewrite(body('typo','seeded'),'codex','codex');assert.equal(r.body.model,'gpt-6.1-sol');assert.equal(r.body.reasoning.effort,'low');
+    const b=body('use long tier','seeded-variant');b.model='gpt-jev-sol';assert.equal((await service.engine.rewrite(b,'codex','codex')).body.reasoning.effort,'low');
+  }finally{await service.close();}
+});
+
+test('Served-model receipts ignore model text in generated deltas',async()=>{
+  const {servedInspector}=await import('../src/service.mjs');const logs=[];const inspect=servedInspector({},'http',x=>logs.push(x));
+  inspect(Buffer.from('data: {"type":"response.output_text.delta","delta":"model: gpt-6-astra","model":"gpt-6-astra"}\n\n'));
+  assert.equal(logs.length,0);inspect(Buffer.from('data: {"type":"response.created","response":{"model":"gpt-6-luna"}}\n\n'));assert.equal(logs[0].served_model,'gpt-6-luna');
+});

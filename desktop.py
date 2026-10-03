@@ -17,7 +17,19 @@ def refresh_catalog():
         virtual.append(template)
     write(CATALOG,json.dumps({'models':virtual+models},indent=2)+'\n')
 
+def remove_provider(text,record):
+    parsed=tomllib.loads(text).get('model_providers',{}).get('jev')
+    if parsed is None:return text,False
+    if parsed!=record['provider']:return text,True
+    # TOML parsing establishes ownership; table headers establish the exact span.
+    headers=list(re.finditer(r'^\s*\[[^\n]+?\][ \t]*(?:#[^\n]*)?$',text,re.M))
+    target=next((i for i,m in enumerate(headers) if re.match(r'^\s*\[model_providers\.jev\]',m.group())),None)
+    if target is None:return text,True
+    start=headers[target].start();end=headers[target+1].start() if target+1<len(headers) else len(text)
+    return text[:start]+text[end:],False
+
 def enable():
+    if read_json(RECORD).get('conflicts'):raise RuntimeError('desktop_restore_conflicts_pending')
     if read_json(RECORD).get('active'):print('Desktop picker integration already enabled.');return
     router=read_json(STATE/'config.json');original=CONFIG.read_text();parsed=tomllib.loads(original)
     if 'jev' in parsed.get('model_providers',{}):raise RuntimeError('existing_jev_provider_not_owned')
@@ -40,16 +52,18 @@ def disable():
     for field in record['fields']:
         hit=root_line(text,field['key'])
         if hit and parsed.get(field['key'])==field['installed']:text=text[:hit.start()]+field['old_line']+text[hit.end():]
-        else:conflicts.append(field['key'])
-    if record['block'] in text:text=text.replace(record['block'],'',1)
-    else:conflicts.append('model_providers.jev')
+        elif (hit.group() if hit else '')!=field['old_line']:conflicts.append(field['key'])
+    if parsed.get('model_providers',{}).get('jev')==record['provider'] and record['block'] in text:text=text.replace(record['block'],'',1)
+    else:
+        text,conflict=remove_provider(text,record)
+        if conflict:conflicts.append('model_providers.jev')
     if parsed.get('model') in ('gpt-jev-auto','gpt-jev-luna','gpt-jev-sol','jev-auto'):
         original=tomllib.loads((pathlib.Path(record['backup'])/'config.toml').read_text())
         for key in ('model','model_reasoning_effort'):
             text=toml_set(text,key,original.get(key))
     tomllib.loads(text);write(CONFIG,text)
     router=read_json(STATE/'config.json');router.setdefault('desktop',{})['mode']='advice-only';write(STATE/'config.json',json.dumps(router,indent=2)+'\n')
-    record['active']=False;write(RECORD,json.dumps(record,indent=2)+'\n')
+    record['active']=bool(conflicts);record['conflicts']=conflicts;write(RECORD,json.dumps(record,indent=2)+'\n')
     print('Desktop restored to its previous provider/catalog. Restart Desktop.')
     if conflicts:print('User-modified fields preserved: '+', '.join(conflicts))
 if __name__=='__main__':
