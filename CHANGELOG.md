@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Add native Hermes cache-preserving effort updates on supported standard GPT-6
+  Responses requests. Preserve the initial request effort, append trusted updates,
+  replay bounded private metadata on resume and establish a fresh marker after
+  context replacement. `/reasoning` keeps the live selected agent and persists
+  its effort to SQLite. Hermes' own tools and memory remain in its runtime.
+- Add reversible `hermes-effort-enable` / `hermes-effort-disable`, owned source
+  hash checks in `doctor`, compatibility gates and dependency-preserving rollback.
+  Live Sol effort swaps, SQLite resume and local compression retained cached
+  prefixes; no guaranteed cache hit rate is implied.
+
 - Correct effort-cache guidance: native Codex 0.160.0 already implements trusted
   configuration updates behind `reasoning_effort_override`. Document persistent
   setup and live Sol low/high cache evidence. Hermes' default runtime remains

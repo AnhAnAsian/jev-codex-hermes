@@ -46,3 +46,68 @@ class NativeClientsTests(unittest.TestCase):
             self.assertEqual(p.read_text(),'OTHER_SETTING=preserved\n');self.assertEqual(len(record['envChanges']),1)
             p.write_text('HERMES_CODEX_BASE_URL=https://another-provider.example\n')
             self.assertEqual(native.endpoint_lines(p.read_text(),'http://127.0.0.1:48767/hermes/codex'),[])
+
+    def effort_surfaces(self,hermes):
+        helper=hermes/'agent/chat_completion_helpers.py'
+        helper.write_text('def _build_codex_kwargs(agent):\n    return agent._get_transport().build_kwargs(model=agent.model,\n        context_management=context_management, text_verbosity=getattr(agent, "text_verbosity", None))\n\ndef _build_chat_completions_kwargs(agent):\n    pass\n')
+        adapter=hermes/'agent/codex_responses_adapter.py'
+        adapter.write_text('_PREFLIGHT_ITEM_HANDLERS: Dict[str, Callable[..., Optional[Dict[str, Any]]]] = {\n}\n')
+        (hermes/'hermes_cli/cli_commands_mixin.py').write_text('def command(self, parsed):\n        _retire_agent(self)  # Force agent re-init with new reasoning config\n')
+        return helper,adapter
+
+    def test_effort_extension_install_and_restore_preserves_routing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            h=pathlib.Path(tmp);state,hermes,cli,target=self.setup_home(h)
+            with patch.multiple(native,H=h,STATE=state,RECORD=state/'native-clients.json'):
+                native.enable(hermes,pathlib.Path('/synthetic/python'))
+                helper,adapter=self.effort_surfaces(hermes)
+                original=[helper.read_bytes(),adapter.read_bytes()]
+                native.enable_effort_updates()
+                self.assertIn('return apply_effort_updates(agent, api_kwargs)',helper.read_text())
+                self.assertIn('"configuration_update": preflight_update',adapter.read_text())
+                self.assertIn('if not update_live_reasoning(self, parsed)',(hermes/'hermes_cli/cli_commands_mixin.py').read_text())
+                self.assertTrue((hermes/'agent/effort_cache.py').exists())
+                native.disable_effort_updates()
+                self.assertEqual([helper.read_bytes(),adapter.read_bytes()],original)
+                self.assertFalse((hermes/'agent/effort_cache.py').exists())
+                self.assertTrue((hermes/'agent/turn_model_routing.py').exists())
+                self.assertTrue(json.loads((state/'native-clients.json').read_text())['active'])
+                native.disable()
+
+    def test_effort_install_refuses_changed_surface_before_mutating(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            h=pathlib.Path(tmp);state,hermes,cli,target=self.setup_home(h)
+            with patch.multiple(native,H=h,STATE=state,RECORD=state/'native-clients.json'):
+                native.enable(hermes,pathlib.Path('/synthetic/python'))
+                helper,adapter=self.effort_surfaces(hermes)
+                adapter.write_text('changed upstream surface')
+                original=helper.read_bytes()
+                with self.assertRaises(RuntimeError):native.enable_effort_updates()
+                self.assertEqual(helper.read_bytes(),original)
+                self.assertFalse((hermes/'agent/effort_cache.py').exists())
+                self.assertFalse(json.loads((state/'native-clients.json').read_text()).get('effortCacheActive'))
+
+    def test_effort_rollback_keeps_module_when_user_edited_importing_core(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            h=pathlib.Path(tmp);state,hermes,cli,target=self.setup_home(h)
+            with patch.multiple(native,H=h,STATE=state,RECORD=state/'native-clients.json'):
+                native.enable(hermes,pathlib.Path('/synthetic/python'))
+                helper,adapter=self.effort_surfaces(hermes);native.enable_effort_updates()
+                helper.write_text(helper.read_text()+'# User edit\n')
+                native.disable_effort_updates()
+                self.assertTrue((hermes/'agent/effort_cache.py').exists())
+                self.assertIn('apply_effort_updates',helper.read_text())
+                self.assertTrue(json.loads((state/'native-clients.json').read_text())['effortCacheActive'])
+
+    def test_fresh_native_install_includes_effort_and_full_rollback_clears_status(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            h=pathlib.Path(tmp);state,hermes,cli,target=self.setup_home(h)
+            helper,adapter=self.effort_surfaces(hermes);before=helper.read_bytes()
+            with patch.multiple(native,H=h,STATE=state,RECORD=state/'native-clients.json'):
+                native.enable(hermes,pathlib.Path('/synthetic/python'))
+                self.assertTrue(json.loads((state/'native-clients.json').read_text())['effortCacheActive'])
+                self.assertTrue((hermes/'agent/effort_cache.py').exists())
+                native.disable()
+                self.assertEqual(helper.read_bytes(),before)
+                self.assertFalse((hermes/'agent/effort_cache.py').exists())
+                self.assertFalse(json.loads((state/'native-clients.json').read_text())['effortCacheActive'])

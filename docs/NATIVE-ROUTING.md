@@ -128,16 +128,41 @@ first high request lost the warmed prefix. This is engine-level evidence, not a
 guarantee of cache availability on every request or acceptance of every UI control.
 See [OpenAI's native implementation](https://github.com/openai/codex/pull/43110).
 
-Hermes currently sends effort as request-level `reasoning.effort`. Changing it can
-rewrite hidden model instructions and prevent reuse of the earlier prefix. On
-supported GPT-6 models in standard single-agent mode, OpenAI documents appending
-a `configuration_update` input item while keeping request-level effort unchanged
-to preserve that prefix. Hermes' default runtime does not implement those items
-through this adapter. A complete integration needs to persist the original
-request effort and ordered updates across agent reconstruction/resume, and scope
-the baseline to the session, model, provider and compacted context. Validate actual
-cache counts across effort changes, cold resume and compaction before claiming
-support. See
+### Hermes native effort updates
+
+The native Hermes integration now appends trusted `configuration_update` items
+while keeping the initial request-level `reasoning.effort` unchanged. Hermes
+retains its own tools, memory and agent loop. Jev still classifies only the first
+task; no inference proxy or classifier is used for effort changes.
+
+New native-client installations include this extension when the current Responses
+source surface exists. For an existing native-client installation:
+
+```sh
+jev-router hermes-effort-enable
+# Restart Hermes, then use its ordinary command:
+/reasoning high
+```
+
+`/reasoning` updates the live supported agent and its primary-runtime settings
+instead of discarding it. The current effort is merged into SQLite session
+metadata. A private, profile-scoped `cache/jev-effort` journal stores only effort,
+item offsets and SHA-256 fingerprints, allowing ordered updates to replay on cold
+resume without storing prompts, tool output or credentials. The journal is
+bounded to 256 updates per session; exceeding that starts a fresh baseline and
+can lose cache reuse. State I/O failures fall back to the ordinary request.
+
+Replaced history, changed instructions/tools/model/provider and successful local
+compression start a new baseline with a fresh update before the next user input.
+Failed compression that keeps the prefix does not reset it. Scope is private to
+the Hermes profile and session; side-question/fork turns do not edit parent state.
+
+The gate covers exact GPT-6 Sol/Astra/Luna slugs on direct OpenAI API or native
+ChatGPT Codex endpoints, in standard single-agent mode. Pro mode, automatic API
+compaction, truncation, other providers and unsupported models keep ordinary
+request-level effort behavior. OpenAI disallows those combinations with effort
+updates; they do not receive a cache-preservation claim. Hermes' local summarizer
+remains available. See
 [prompt caching](https://developers.openai.com/api/docs/guides/prompt-caching)
 and [reasoning changes](https://developers.openai.com/api/docs/guides/reasoning#change-reasoning-mid-conversation).
 
@@ -146,7 +171,17 @@ feature. It changes tool execution: Codex runs the loop, and Hermes documents th
 `delegate_task`, `memory`, `session_search` and `todo` are unavailable. This is not
 an automatic migration; keep the default Hermes runtime when those tools matter.
 
-Keep Hermes' effort unchanged until its default runtime integration is verified.
+Live Sol probes retained 7,808 cached tokens on low → high, 7,808 on SQLite cold
+resume, 7,936 on high → low, then 8,704 on low → high after local compression and
+8,576 on the return to low. The compressor used a deterministic test summary;
+subsequent inference was real. An unchanged low-effort control also missed once,
+so these observations establish prefix eligibility, not guaranteed hits.
+
+`jev-router doctor` checks owned extension hashes. Roll back only this extension
+with `jev-router hermes-effort-disable`, then restart Hermes. Source updates can
+replace these hooks; revalidate compatibility after Hermes upgrades. Restoration
+preserves user edits and keeps dependent extension files together on conflicts.
+
 Changes to tools, instructions, compaction, retention or the model can also
 affect reuse.
 

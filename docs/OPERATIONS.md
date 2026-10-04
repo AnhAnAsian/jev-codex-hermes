@@ -198,3 +198,19 @@ Interactive terminal Codex uses its supported `--remote unix://...` connection t
 `jev-codex` and `jev-hermes` respect this native mode instead of adding proxy endpoint overrides. The installer also removes only the exact owned `HERMES_CODEX_BASE_URL` endpoint from profile `.env` files, journaling that line alone and preserving every other value. This is necessary because that endpoint overrides YAML. Routed legacy agents explicitly resolve the configured native destination. The terminal uses Desktop's current native binary because older Codex runtimes can reject GPT-6 models on ChatGPT authentication; the original npm installation remains unchanged. Restart Hermes to load the extension. New terminal invocations activate immediately. A Hermes update can replace its generic core hook; revalidate/reapply the extension against the new active runtime before relying on automatic routing. No vendor binary or authentication token store is patched.
 
 Rollback: `jev-router native-clients-disable`. Ownership checks preserve later user edits and report conflicts. Restart Hermes after rollback. This restores the prior CLI launcher and Hermes proxy configuration; it does not disable the separate Desktop adapter.
+
+### Hermes effort-cache extension
+
+Existing native installations can run `jev-router hermes-effort-enable`, then
+restart Hermes. Compatible new native installations include it automatically.
+The extension patches four owned source files per Hermes tree: the kwargs builder,
+Responses preflight, ordinary `/reasoning` handler and an effort-state helper.
+It retains Hermes' tool loop, merges effort into session metadata, and uses a
+private profile-scoped journal containing only settings, offsets and fingerprints.
+Inference remains direct. See [compatibility and live evidence](NATIVE-ROUTING.md#hermes-native-effort-updates).
+
+`jev-router hermes-effort-disable` restores only these files; restart Hermes.
+Full native-client rollback also restores them. If a dependent file was edited,
+restoration keeps the extension together and reports a conflict. `doctor` verifies
+owned source hashes; it cannot prove a running Hermes process loaded the extension.
+Hermes upgrades can change the hook surfaces, so revalidate before reapplying.

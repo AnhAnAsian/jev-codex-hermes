@@ -216,6 +216,8 @@ def main():
         subprocess.run([sys.executable,str(ROOT/'native_desktop.py'),action.rsplit('-',1)[1]],check=True)
     elif action=='native-clients-disable':
         subprocess.run([sys.executable,str(ROOT/'native_clients.py'),'disable'],check=True)
+    elif action in ('hermes-effort-enable','hermes-effort-disable'):
+        subprocess.run([sys.executable,str(ROOT/'native_clients.py'),action.replace('hermes-','')],check=True)
     elif action in ('desktop-enable','desktop-disable','desktop-refresh'):
         subprocess.run([sys.executable,str(ROOT/'desktop.py'),action.split('-')[1]],check=True)
     elif action=='uninstall':

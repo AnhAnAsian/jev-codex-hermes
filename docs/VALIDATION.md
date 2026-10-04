@@ -30,7 +30,7 @@ Mocked classifier/provider tests verify model/effort rewrites, pinning, manual
 overrides, streaming, opaque headers, origin checks and metadata logging.
 Temporary-home Python tests verify selective client installation and restoration.
 They do not prove the normal Desktop app or provider accepts a request.
-The current adapter gate has 67 JavaScript and 32 Python tests. The pinned
+The current adapter gate has 67 JavaScript and 50 Python tests. The pinned
 upstream suite has 154 tests. The separate Hermes regression run below is not
 part of this repository's credential-free CI gate.
 The macOS gate additionally copies the real installed package/dependencies, loads
@@ -106,10 +106,33 @@ remain untested. A later synthetic native Codex 0.160.0 probe with
 `reasoning_effort_override=true` confirmed Sol/OpenAI metadata and retained
 18,944 cached input tokens on low → high, then 19,072 on high → low. The same
 probe with the feature off lost the warmed prefix on the first high request.
-No tools ran, and Desktop UI controls were not clicked. Hermes
-changes request-level effort and does not implement cache-preserving
-`configuration_update` items. See [cache limits](NATIVE-ROUTING.md#reasoning-changes-and-caching).
+No tools ran, and Desktop UI controls were not clicked. See
+[cache limits](NATIVE-ROUTING.md#reasoning-changes-and-caching).
 Hermes upgrades can replace the local hook and require revalidation/reapplication.
+
+### Hermes effort-cache acceptance — 2026-10-04
+
+The installed extension was tested on real native `gpt-6.1-sol` / `openai-codex`
+Responses requests with synthetic input and no tools. The actual CLI `/reasoning`
+handler retained the live agent, changed its settings, and persisted the effort
+to SQLite. A fresh agent reloaded native history and the saved high effort.
+Request-level effort stayed low while ordered input updates carried the changes.
+
+Final 12-turn probe: low → high retained 7,808 cached input tokens; SQLite cold
+resume retained 7,808; high → low retained 7,936. The actual local compressor and
+commit path, with a deterministic synthetic summarizer, replaced history. Its
+first request was cold; after warming, low → high retained 8,704 and high → low
+retained 8,576. Static request and prefix fingerprints matched across swaps.
+One unchanged-effort post-compression control missed too: availability is not
+guaranteed. Earlier probes without a fresh update after context replacement lost
+the cache on a later effort swap; the final implementation adds that reset marker.
+
+The isolated Hermes run passed 207 transport/adapter/CLI/persistence regression
+tests, including four new actual-Hermes integration tests. Adapter unit tests
+cover retry ordering, scope isolation, tool continuations, history replacement,
+failed compression, unsupported modes, private journal bounds and rollback.
+Automatic API compaction, pro/multi-agent requests and other providers are gated
+out. Other GPT-6 models are compatibility-gated but not live cache-validated here.
 
 ## Settings acceptance — 0.2.0 / 2026-10-03
 

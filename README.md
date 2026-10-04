@@ -250,8 +250,10 @@ Use/compaction, all real coding tiers and reboot acceptance remain outstanding.
 The new live probes executed no tools. Cache hits aren't guaranteed. Native Codex
 0.160.0 preserved cached prefixes across Sol effort changes with
 `features.reasoning_effort_override=true`; the native engine owns the updates.
-Hermes' default runtime still changes request-level effort and needs a separate
-integration. See [setup and cache limits](docs/NATIVE-ROUTING.md#reasoning-changes-and-caching).
+The Hermes native extension now preserves the request effort and appends ordered
+updates; live Sol swaps retained cached prefixes, including after SQLite resume
+and local compression. Hermes keeps its own tools and memory. Supported standard
+single-agent requests only; see [setup and cache limits](docs/NATIVE-ROUTING.md#reasoning-changes-and-caching).
 Linux CI doesn't imply a Linux startup installer.
 
 The release pins unmodified upstream in `upstream.lock.json`. Updating this adapter

@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {spawn,spawnSync} from 'node:child_process';
 import {readConfig,configPath,home,loadKey} from './src/settings.mjs';
@@ -107,6 +108,12 @@ async function doctor() {
     else checks.push({check:'Hermes integration',ok:manifest.active===true && text(path.join(os.homedir(),'.hermes/config.yaml')).includes(endpoint()+'/hermes/'),detail:'Original provider owns authentication; live generation must be tested separately.'});
   }
   if(nativeClients.active)checks.push({check:'Terminal native routing launcher',ok:text(path.join(os.homedir(),'.local/bin/codex')).includes('native-terminal.mjs')});
+  if(nativeClients.effortCacheActive) {
+    const files=(nativeClients.files || []).filter(entry=>entry.effortCache);
+    checks.push({check:'Hermes cache-preserving effort extension',ok:files.length>=4 && files.every(entry=>{
+      try{return createHash('sha256').update(fs.readFileSync(entry.path)).digest('hex')===entry.installedHash;}catch{return false;}
+    }),detail:'Owned source hashes match. Restart Hermes to load it; cache availability requires a live check.'});
+  }
   if(c.clients?.claude) {
     checks.push({check:'Claude integration',ok:manifest.active===true && text(path.join(os.homedir(),'.claude/settings.json')).includes(endpoint()+'/claude')});
     const auth=spawnSync('claude',['auth','status','--json'],{encoding:'utf8',timeout:10000});
@@ -159,6 +166,7 @@ try {
   else if(action==='desktop-disable')manage('desktop-disable');
   else if(action==='desktop-native-enable' || action==='desktop-native-disable')manage(action);
   else if(action==='native-clients-disable')manage(action);
+  else if(action==='hermes-effort-enable' || action==='hermes-effort-disable')manage(action);
   else if(action==='key')await privateKey();
   else if(action==='classify-test') {
     const c=readConfig();
@@ -192,5 +200,5 @@ try {
   }
   else if(action==='uninstall'){manage('uninstall');console.log('For full removal including private key/backups, follow the uninstall instructions in README.md.');}
   else if(['claude','codex','hermes'].includes(action))await client(action,process.argv.slice(3));
-  else console.log('Usage: jev-router start|stop|restart|status|doctor|hermes-picker|desktop-enable|desktop-disable|desktop-native-enable|desktop-native-disable|key [--openrouter]|classify-test|enable|disable|logs [--follow]|settings|config|uninstall|claude|codex|hermes');
+  else console.log('Usage: jev-router start|stop|restart|status|doctor|hermes-picker|hermes-effort-enable|hermes-effort-disable|desktop-enable|desktop-disable|desktop-native-enable|desktop-native-disable|key [--openrouter]|classify-test|enable|disable|logs [--follow]|settings|config|uninstall|claude|codex|hermes');
 }catch {console.error('Jev command failed. Run jev-router doctor, or jev-router disable to restore the normal clients.');process.exitCode=1;}
