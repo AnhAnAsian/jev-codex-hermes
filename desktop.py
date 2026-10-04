@@ -16,6 +16,9 @@ def refresh_catalog():
         template['context_window']=min(m['context_window'] for m in models if m['slug'] in ({spec['model'] for spec in mapping['tiers'].values()} | {mapping['fallbackModel']}))
         virtual.append(template)
     write(CATALOG,json.dumps({'models':virtual+models},indent=2)+'\n')
+    if read_json(STATE/'native-desktop.json').get('active'):
+        subprocess=__import__('subprocess')
+        subprocess.run([__import__('sys').executable,str(ROOT/'native_desktop.py'),'refresh'],check=True)
 
 def remove_provider(text,record):
     parsed=tomllib.loads(text).get('model_providers',{}).get('jev')
@@ -46,6 +49,8 @@ def enable():
     router.setdefault('routing',{})['codex']='conversation';router.setdefault('desktop',{})['mode']='proxy-picker';write(STATE/'config.json',json.dumps(router,indent=2)+'\n')
     print('Desktop Jev provider/catalog installed. Restart Desktop. Backup: '+str(backup))
 def disable():
+    if read_json(STATE/'native-desktop.json').get('active'):
+        __import__('subprocess').run([__import__('sys').executable,str(ROOT/'native_desktop.py'),'disable'],check=True)
     record=read_json(RECORD)
     if not record.get('active'):return
     text=CONFIG.read_text();parsed=tomllib.loads(text);conflicts=[]

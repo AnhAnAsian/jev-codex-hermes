@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+### Native first-request routing — 2026-10-04
+
+- Add opt-in native Desktop routing through a reversible `CODEX_CLI_PATH` override.
+  Select a real model/effort from the initial human input, then keep inference,
+  tools, compaction and history inside the unmodified native OpenAI client.
+- Add the Hermes `resolve_session_model` hook and standalone first-task plugin,
+  with bounded profile-scoped pins, native provider resolution, visible selection,
+  persisted reasoning and actual-agent reset on `/new`. Remove only the exact
+  owned proxy endpoint from YAML and profile environment overrides.
+- Add the terminal native app-server bridge over a private Unix socket, first-task
+  exec selection, manual-model bypass and metadata-only resume restoration.
+  Explicit manual settings and other providers retain their normal handling.
+- Add reversible client installation with source/configuration backups and
+  launcher ownership checks. Document opt-in setup, Hermes update requirements,
+  native-mode evidence and the unverified cache behavior when effort changes.
+- Raise the legacy HTTP/WebSocket payload limit from 32 MiB to a configurable,
+  bounded 128 MiB default. Return actionable size-only errors, preserve WebSocket
+  close code 1009 and forward manual Codex requests without JSON reserialization.
+
+Fixed the native Desktop model picker reverting to Jev when a routed turn starts.
+Replay confirmed native model/effort settings after Desktop restores its original
+turn parameters. Inference remains direct; large native events still stream
+without whole-event buffering. Added notification-ordering regression coverage.
+
 Public-release preparation: clearer verified client scope and experimental
 Anthropic API-auth boundaries, tested-version snapshot, external classification
 cost/privacy notice and explicit cache/quota limits. Added a concrete GitHub

@@ -12,8 +12,8 @@
 
 <p align="center">
   <strong>Jev for Codex &amp; Hermes</strong><br>
-  Automatic model selection for Codex Desktop and first-party Hermes.<br>
-  One local service. Editable reasoning tiers. Your existing client login.
+  Automatic model selection for Codex Desktop, terminal Codex and first-party Hermes.<br>
+  Select once. Run native. Keep your existing client login.
 </p>
 
 <p align="center">
@@ -35,6 +35,13 @@ your original provider; the classifier uses separate OpenRouter credits or TypeS
 access. This is a small adapter around the unmodified
 [upstream Jev Router](https://github.com/flaviusapop/jev-router), not a new classifier.
 
+**Native first-request mode is now available.** Jev sees only the initial human
+task text and chooses a real model/effort. Subsequent inference, history, tool
+loops and compaction go directly from the native client to OpenAI. Manual real
+models skip classification. The existing HTTP proxy remains available for legacy
+clients and experimental Anthropic routes. Native mode is an explicit opt-in;
+pulling this repository does not migrate an installed client.
+
 > **Experimental, with explicit limits.** macOS startup is supported; CI runs on
 > macOS and Linux. Live behavior depends on client versions, model access and auth.
 > The verified scope is Codex Desktop and first-party Hermes on Codex OAuth.
@@ -45,9 +52,9 @@ access. This is a small adapter around the unmodified
 
 | Client | How you use it | Current evidence |
 | :--- | :--- | :--- |
-| **Codex Desktop** | Select **Jev**, **Jev Luna** or **Jev Sol** in the normal picker | Parent request routing and served-model receipts observed |
-| **First-party Hermes** | `/model jev`, `/model jev-luna`, `/model jev-sol` on Codex OAuth; picker catalog entries also installed | All three profiles verified in the CLI; native GUI refresh still needs visual acceptance |
-| **Codex CLI** | Shared provider configuration or `jev-codex` | Adapter coverage; repeat live acceptance on your installation |
+| **Codex Desktop** | Enable native mode; select **Jev**, **Jev Luna** or **Jev Sol** | Native OpenAI selection/follow-up/manual-model probes passed; picker notification ordering tested |
+| **First-party Hermes** | Install the native extension; `/model jev` on Codex OAuth | First request, resumed follow-up and manual Sol passed without proxy inference; GUI visual acceptance pending |
+| **Codex CLI** | Native launcher: normal `codex` or `jev-codex` | Interactive, exec and resume passed on native 0.160.0; selected model/effort visible |
 | **Claude Code terminal / Hermes Anthropic** | Optional experimental API-auth proxy integration | Automated coverage; live Anthropic generation unverified; consumer OAuth routing is not a supported feature |
 | **Claude Desktop Chat / Cowork** | Use the local **Ask Jev** page for advice, then choose a model manually | Automatic integration is not installed |
 
@@ -87,7 +94,8 @@ executable if needed.
 
 **Already installed?** Use the [migration guide](docs/OPERATIONS.md#existing-installation--adapter-migration).
 The installer refuses to overwrite existing code or private state. Pulling the
-repository alone does not update the running service.
+repository alone does not update the running service. It initially installs the
+legacy proxy integration; enable native mode separately below.
 
 ### 2. Add the classification key
 
@@ -100,12 +108,26 @@ Enter the key privately in your terminal; input is hidden. Keys stay outside Git
 with owner-only permissions. For direct TypeSafe access, see
 [classifier settings](docs/SETTINGS.md#advanced-configuration).
 
-### 3. Select Jev in a new conversation
+### 3. Enable native mode and select Jev
 
-Restart enabled clients. Choose **Jev** in Codex Desktop, or run `/model jev` in
-Hermes on Codex OAuth. A user LaunchAgent starts the router at login, so Desktop
-needs no terminal wrapper. Check a real response with `jev-router logs --follow`:
-the picker label alone doesn't prove which model answered.
+```sh
+~/.local/bin/jev-router desktop-native-enable
+```
+
+Quit and reopen Desktop, then choose **Jev** in a new chat. Desktop's picker
+shows the selected real model and effort after routing. A user LaunchAgent sets
+the native runtime override at login.
+
+For Hermes and terminal Codex, follow the [native client setup](docs/NATIVE-ROUTING.md).
+The current combined installer needs the active Hermes source/interpreter paths,
+an existing terminal `codex` symlink and the native catalog created above. It
+backs up the Hermes hook changes and original launcher. Restart Hermes afterward;
+new terminal invocations activate immediately. Hermes reports the selected model;
+interactive Codex shows it in the footer and exec prints it on stderr.
+
+Check response metadata as well as `native-first-request` receipts; a classifier
+result alone does not prove generation. Repeat a follow-up and confirm no new
+classification or Jev HTTP inference receipt.
 
 ## Make it yours
 
@@ -122,8 +144,9 @@ known capabilities. Saved unlisted IDs remain visible with a warning.
 <sub>Example configuration. Classifier readiness is simulated; no private keys or client data are shown.</sub>
 
 Choose a **routing profile** to edit its four tiers and fallback. Set selection
-timing separately for Codex, Hermes and Claude: once per conversation or once per
-new human turn. Editing a profile here doesn't activate it in a client.
+timing separately for legacy proxy clients: once per conversation or once per
+new human turn. Native mode always selects only for a new chat; it does not
+reclassify follow-ups. Editing a profile here doesn't activate it in a client.
 
 | Profile | Model selection | Default FAST → LONG reasoning |
 | :--- | :--- | :--- |
@@ -143,33 +166,35 @@ metadata. Keys and upstream URLs aren't exposed in the editor.
 
 Read [the settings guide](docs/SETTINGS.md) for exact behavior.
 
-## One service, one chosen answering model
+## Select once, then use native inference
 
 ```mermaid
 flowchart LR
-    C[Codex Desktop / CLI] --> R[Local Jev Router]
-    H[First-party Hermes] --> R
-    A[Claude Code · optional] --> R
-    R --> J[Jev classifier]
-    J --> T[FAST · BALANCED · STRONG · LONG]
-    T --> P[Selected model + reasoning]
-    P --> U[Original provider]
+    C[Codex Desktop / CLI adapter] -->|Initial task text only| J[Jev classifier]
+    H[Hermes session hook] -->|Initial task text only| J
+    J --> P[Selected real model + reasoning]
+    P --> N[Native client]
+    N -->|Inference + history + tools| U[OpenAI]
+    L[Legacy / optional Anthropic clients] --> R[Local HTTP proxy]
+    R --> O[Original provider]
 ```
 
 The adapter reuses upstream classification questions and decision policy. It adds
-picker catalogs, conversation pins, streaming transport and reversible config
-merges. Client authentication headers are forwarded transiently; OAuth login and
-refresh stay with the original clients. No LiteLLM or extra frontend server.
+picker catalogs, conversation pins, native client adapters and reversible config
+merges. In native mode, login, tokens and inference remain with the original
+client. Legacy proxy routes forward authentication headers transiently. No
+LiteLLM or extra frontend server.
 
-- **Keep the choice:** Codex/Hermes default to conversation routing; tool loops stay pinned. Optional Claude defaults to per-turn routing.
+- **Keep the choice:** native Codex/Hermes select once and restore saved real model/effort on resume; optional Claude defaults to per-turn routing.
 - **Take control:** explicit tier directives bypass classification; regular real-model selections remain manual.
-- **Handle failure:** failed classification uses your saved fallback. A stopped proxy cannot forward requests.
-- **Inspect the result:** logs include routing decisions and served-model receipts. Outbound effort isn't independent provider confirmation.
+- **Handle failure:** failed classification uses your saved fallback. Already selected native chats continue without the HTTP proxy; legacy routes need it running.
+- **Inspect the result:** native clients show the selected model/effort; metadata receipts record selection. Outbound effort isn't independent provider confirmation.
 - **Protect the boundary:** only `127.0.0.1` listens. Metadata logs omit prompts, source code and credentials.
 
-Pins are held in memory and reset on restart. Subagents can route independently
-when the client supplies enough identity. The displayed picker effort isn't
-updated to reflect the selected backend effort.
+Native Codex restores model/effort from thread metadata. Hermes also stores bounded
+profile-scoped pins; legacy HTTP proxy pins remain in memory and reset on restart.
+The native Codex/subagent catalog contains real models only. Hermes updates can
+replace its local core hook; revalidate and reapply the extension after upgrading.
 
 ## Daily controls
 
@@ -180,6 +205,8 @@ Add `~/.local/bin` to your PATH for these shorter commands.
 | Edit maps / pause classification | `jev-router settings` |
 | Inspect decisions | `jev-router logs --follow` |
 | Check service / integration health | `jev-router status` / `jev-router doctor` |
+| Restore Hermes and terminal launchers | `jev-router native-clients-disable`, then restart Hermes |
+| Restore the previous Desktop mode | `jev-router desktop-native-disable`, then restart Desktop |
 | Use clients directly / restore routing | `jev-router disable` / `jev-router enable`, then restart clients |
 | Restart the service | `jev-router restart` |
 
@@ -208,16 +235,22 @@ reporting and what information to include.
 
 ## Evidence, updates and recovery
 
-The current gate covers **39 Node + 23 Python + 154 upstream tests**. CI runs
+The current gate covers **67 Node + 32 Python tests**, plus the **154-test pinned
+upstream suite**. A separate isolated Hermes regression run passed **127 tests**. CI runs
 without paid keys or client logins. See [validation](docs/VALIDATION.md) for dated
 live observations and the acceptance checklist for another Mac.
 Use [clean-install acceptance](docs/CLEAN-INSTALL.md) to test a fresh public
 checkout safely, then verify login, the native picker, real receipts and startup
 on a clean Mac account. Automated packaging tests do not establish live acceptance.
 
-Live Anthropic generation, comprehensive Desktop Computer Use/compaction, all
-real coding tiers and reboot acceptance remain outstanding. Cache hits aren't
-guaranteed; cache-preserving `configuration_update` items aren't implemented.
+Live native Hermes first/follow-up/manual-model requests and terminal
+interactive/exec/resume requests passed; native CLI cached input was observed
+with unchanged effort. Live Anthropic generation, comprehensive Desktop Computer
+Use/compaction, all real coding tiers and reboot acceptance remain outstanding.
+The new live probes executed no tools. Cache hits aren't guaranteed, and changing
+effort can alter hidden instructions. Cache-preserving `configuration_update`
+items are not implemented by this adapter; effort-swap cache reuse is unverified
+in native Codex. See [cache limits](docs/NATIVE-ROUTING.md#reasoning-changes-and-caching).
 Linux CI doesn't imply a Linux startup installer.
 
 The release pins unmodified upstream in `upstream.lock.json`. Updating this adapter

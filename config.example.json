@@ -2,6 +2,7 @@
   "enabled": true,
   "host": "127.0.0.1",
   "port": 48767,
+  "maxPayloadBytes": 134217728,
   "classificationMaxChars": 8000,
   "disabledTiers": [],
   "providers": {

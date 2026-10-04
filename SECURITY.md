@@ -10,6 +10,13 @@ credential stores or persist tokens. The original client remains responsible for
 login/refresh. Client config backups can contain pre-existing credentials and
 remain in owner-only local state; never upload them.
 
+In opt-in native mode, the adapter selects before inference and the native client
+sends requests directly to OpenAI. The Jev HTTP gateway does not receive native
+conversation history or inference credentials. Terminal native RPC uses a private
+per-process Unix socket. Hermes installs a reversible source hook and standalone
+plugin; updates can replace the hook. Ownership journals and source/configuration
+backups are private local state and must not be uploaded.
+
 Classification sends bounded task text to TypeSafe/Jev, optionally through
 OpenRouter. It is not an offline classifier. Prompts may include sensitive text;
 use regular client models or disable routing when external classification is

@@ -15,23 +15,29 @@ Use the normal Desktop model picker in a new conversation:
 | Jev Luna | `gpt-jev-luna` | Luna family only |
 | Jev Sol | `gpt-jev-sol` | Sol family only |
 
-These IDs are proxy aliases, not upstream models. The service replaces them with
-a real model and reasoning effort before sending the request to the Codex
-subscription endpoint. Codex retains responsibility for OAuth login and refresh.
-Selecting a regular real model preserves manual operation.
+These IDs are routing aliases, not upstream models. In opt-in native mode the
+adapter resolves them before the first turn; native Codex then sends inference
+directly to OpenAI. The legacy mode resolves aliases inside the HTTP proxy.
+Codex retains responsibility for OAuth login and refresh. Selecting a regular
+real model skips classification.
 
-The displayed effort next to Jev may differ from the effort sent upstream. Inspect
-`jev-router logs --follow` for the routing receipt and `served_model`; the outbound
-effort is not independent confirmation from the provider.
+Native Desktop confirms the selected real model/effort after turn-start
+restoration, preventing the picker from reverting to Jev. The legacy proxy does
+not synchronize the picker. Inspect routing and response metadata; outbound effort
+is not independent confirmation from the provider.
 
-For the CLI, use the shared provider configuration or the installed `jev-codex`
-launcher. If Desktop is missing profiles, run `jev-router refresh-catalog`, restart
-Desktop, and check `jev-router doctor` before changing any client files.
+The native terminal launcher supports normal `codex`, interactive/exec/resume and
+`jev-codex`; it uses the current bundled Desktop runtime. Follow
+[native setup and limits](NATIVE-ROUTING.md). If Desktop is missing profiles, run
+`jev-router refresh-catalog` and restart Desktop. `doctor` mainly checks legacy
+configuration; native activation needs a live first-turn/follow-up check.
 
 ## First-party Hermes on Codex OAuth
 
 This integration targets the first-party Hermes client and supported Hermes
-configuration. It does not patch Hermes or a third-party desktop wrapper.
+configuration. Native mode adds a standalone plugin and a reversible generic
+core hook to the active Hermes source; it does not patch a vendor binary or a
+third-party desktop wrapper. The legacy integration changes configuration only.
 
 | Chat command | Model ID |
 | :--- | :--- |
@@ -40,11 +46,15 @@ configuration. It does not patch Hermes or a third-party desktop wrapper.
 | `/model jev-sol` | `gpt-jev-sol` |
 
 Hermes keeps the `openai-codex` provider and its existing ChatGPT/Codex login.
-Requests use `/hermes/codex` on the localhost proxy. Model aliases and picker
+Native mode selects only from the first task, reports the real model/effort and
+uses direct native inference. Follow-ups and resumes retain the selected model;
+manual real models bypass classification. Restart Hermes after installing the
+extension. An update can replace its local core hook; revalidate afterward.
+Legacy mode uses `/hermes/codex` on the localhost proxy. Model aliases and picker
 catalog entries are separate: the adapter installs both, including the supported
 `providers.openai-codex.models` overlay.
 
-If a command works but the picker is missing a profile:
+In legacy mode, if a command works but the picker is missing a profile:
 
 1. Run `jev-router hermes-picker` to register owned catalog entries.
 2. Restart Hermes or refresh its model menu.

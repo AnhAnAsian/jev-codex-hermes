@@ -4,7 +4,7 @@ import https from 'node:https';
 import {once} from 'node:events';
 import {randomUUID} from 'node:crypto';
 import WebSocket,{WebSocketServer} from 'ws';
-import {readConfig,loadKey,safeLog,loadModelCatalog} from './settings.mjs';
+import {readConfig,loadKey,safeLog,loadModelCatalog,payloadLimit} from './settings.mjs';
 import {RoutingEngine} from './routing.mjs';
 import {SettingsStore} from './settings-store.mjs';
 const version=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8')).version;
@@ -57,6 +57,8 @@ export function servedInspector(receipt,transport,logger) {
 export async function startService({config=readConfig,classifier,logger=safeLog,port,catalog=loadModelCatalog,settingsStore=new SettingsStore({catalog})}={}) {
   let snapshot=structuredClone(config()),degraded=false;
   const initial=snapshot;
+  // One startup limit covers HTTP bodies, WebSocket frames and queued frames.
+  const maxPayloadBytes=payloadLimit(initial);
   const current=()=>{try{snapshot=structuredClone(config());degraded=false;}catch{degraded=true;}return snapshot;};
   const engine=new RoutingEngine({config:current,classifier,logger});
   const refreshModels=()=>engine.seedModels(catalog());refreshModels();
@@ -109,7 +111,7 @@ export async function startService({config=readConfig,classifier,logger=safeLog,
     }
     if(req.url==='/health') {
       const c=current();refreshModels();
-      return res.writeHead(degraded?503:200,{'content-type':'application/json','cache-control':'no-store'}).end(JSON.stringify({ok:!degraded,service:'jev-desktop-hermes',version,config_state:degraded?'last-valid':'valid',enabled:c.enabled,keyAvailable:Boolean(loadKey(c)),classifier:c.classifier?.provider || 'typesafe',host:'127.0.0.1',port:server.address().port}));
+      return res.writeHead(degraded?503:200,{'content-type':'application/json','cache-control':'no-store'}).end(JSON.stringify({ok:!degraded,service:'jev-desktop-hermes',version,config_state:degraded?'last-valid':'valid',enabled:c.enabled,keyAvailable:Boolean(loadKey(c)),classifier:c.classifier?.provider || 'typesafe',host:'127.0.0.1',port:server.address().port,maxPayloadBytes}));
     }
     if(req.url==='/desktop/decision' && req.method==='POST') {
       try {
@@ -124,18 +126,35 @@ export async function startService({config=readConfig,classifier,logger=safeLog,
     let r;
     try {r=routePath(req.url,current());}catch{return res.writeHead(404).end();}
     let receipt={client:r.client,request_id:randomUUID(),state:'passthrough'};
+    const rejectPayload=bytes=>{
+      logger({...receipt,state:'payload-too-large',transport:'http',status:413,payload_bytes:bytes,limit_bytes:maxPayloadBytes});
+      // Drain without retaining unread data so chunked requests get the JSON error.
+      req.resume();
+      return res.writeHead(413,{'content-type':'application/json','connection':'close'}).end(JSON.stringify({error:{
+        type:'proxy_error',code:'payload_too_large',
+        message:`Jev proxy request exceeds its ${maxPayloadBytes/1024/1024} MiB limit. Compact the conversation, or increase maxPayloadBytes in the router config and restart the service.`,
+        payload_bytes:bytes,limit_bytes:maxPayloadBytes
+      }}));
+    };
     try {
+      const declaredSize=Number(req.headers['content-length']);
+      if(Number.isFinite(declaredSize) && declaredSize>maxPayloadBytes)return rejectPayload(declaredSize);
       const chunks=[];let size=0;
-      for await(const chunk of req) {size+=chunk.length;if(size>32*1024*1024)return res.writeHead(413).end();chunks.push(chunk);}
-      let out=Buffer.concat(chunks);
+      for await(const chunk of req.iterator({destroyOnReturn:false})) {
+        size+=chunk.length;if(size>maxPayloadBytes)return rejectPayload(size);chunks.push(chunk);
+      }
+      let out=Buffer.concat(chunks);chunks.length=0;
       const sampling=req.method==='POST' && /\/(responses|messages)$/.test(r.target.pathname);
       if(sampling) {
         try {
           const body=JSON.parse(out.toString());
           const rewritten=await engine.rewrite(body,r.provider,r.client,req.headers);
-          receipt=rewritten.receipt;out=Buffer.from(JSON.stringify(rewritten.body));
+          receipt=rewritten.receipt;
+          // Native Codex selections are untouched; preserve bytes and avoid a copy.
+          if(r.provider!=='codex' || receipt.state!=='manual')out=Buffer.from(JSON.stringify(rewritten.body));
         }catch {logger({...receipt,state:'parse-fallback'});}
       }
+      if(out.length>maxPayloadBytes)return rejectPayload(out.length);
       const upstream=(r.target.protocol==='http:'?http:https).request(r.target,{method:req.method,headers:forwardHeaders(req.headers,r.target)},up=>{
         const headers={...up.headers};delete headers['content-length'];
         if(req.method==='GET' && /\/models$/.test(r.target.pathname) && r.provider==='codex' && up.statusCode===200) {
@@ -171,20 +190,24 @@ export async function startService({config=readConfig,classifier,logger=safeLog,
       if(!res.writableEnded)res.end('{"error":"Router temporarily unavailable"}');
     });
   });
-  const wss=new WebSocketServer({noServer:true,maxPayload:32*1024*1024});
+  const wss=new WebSocketServer({noServer:true,maxPayload:maxPayloadBytes});
   server.on('upgrade',(req,socket,head)=>{
     if(!allowed(req))return socket.destroy();
     let r;try{r=routePath(req.url,current());}catch{return socket.destroy();}
     if(r.provider!=='codex')return socket.destroy();
     wss.handleUpgrade(req,socket,head,down=>{
       const target=new URL(r.target);target.protocol=target.protocol==='https:'?'wss:':'ws:';
-      const up=new WebSocket(target,{headers:forwardHeaders(req.headers,r.target,true),handshakeTimeout:15000,maxPayload:32*1024*1024});
+      const up=new WebSocket(target,{headers:forwardHeaders(req.headers,r.target,true),handshakeTimeout:15000,maxPayload:maxPayloadBytes});
       const connectionKey=randomUUID();let receipt={client:r.client,request_id:connectionKey,state:'websocket'},queue=Promise.resolve();
       let inspect=servedInspector(receipt,'websocket',logger);
       let opened=once(up,'open');opened.catch(()=>{});
       let pendingBytes=0,pendingMessages=0;
+      const rejectPayload=bytes=>{
+        logger({...receipt,state:'payload-too-large',transport:'websocket',payload_bytes:bytes,limit_bytes:maxPayloadBytes});
+        down.close(1009,'Jev proxy payload/queue limit exceeded');up.terminate();
+      };
       down.on('message',(data,binary)=>{
-        if(pendingMessages>=64 || pendingBytes+data.length>32*1024*1024){down.close(1009,'Queue limit');up.terminate();return;}
+        if(pendingMessages>=64 || pendingBytes+data.length>maxPayloadBytes){rejectPayload(pendingBytes+data.length);return;}
         pendingBytes+=data.length;pendingMessages++;
         queue=queue.then(async()=>{
           let out=data;
@@ -192,9 +215,12 @@ export async function startService({config=readConfig,classifier,logger=safeLog,
             const body=JSON.parse(data.toString());
             if(body.type==='response.create') {
               const result=await engine.rewrite(body,r.provider,r.client,req.headers,connectionKey);
-              receipt=result.receipt;inspect=servedInspector(receipt,'websocket',logger);out=JSON.stringify(result.body);
+              receipt=result.receipt;inspect=servedInspector(receipt,'websocket',logger);
+              if(receipt.state!=='manual')out=JSON.stringify(result.body);
             }
           }catch{logger({...receipt,state:'ws-parse-fallback'});}
+          const bytes=typeof out==='string'?Buffer.byteLength(out):out.length;
+          if(bytes>maxPayloadBytes){rejectPayload(bytes);return;}
           await opened;
           if(up.readyState===WebSocket.OPEN)up.send(out,{binary});
         }).catch(()=>{logger({...receipt,state:'ws-upstream-error'});down.close(1011,'Upstream unavailable');}).finally(()=>{pendingBytes-=data.length;pendingMessages--;});
@@ -204,8 +230,21 @@ export async function startService({config=readConfig,classifier,logger=safeLog,
         if(down.readyState===WebSocket.OPEN)down.send(data,{binary});
       });
       for(const [from,to] of [[up,down],[down,up]]) {
-        from.on('close',(code)=>{if(to.readyState===WebSocket.OPEN)to.close(code===1000?1000:1011);else to.terminate();});
-        from.on('error',()=>{logger({...receipt,state:'ws-transport-error'});to.terminate();});
+        from.on('close',(code)=>{
+          if(to.readyState===WebSocket.OPEN)to.close(code===1000 || code===1009?code:1011);
+          else if(to.readyState===WebSocket.CONNECTING)to.terminate();
+          // A peer already closing must finish its handshake, especially for 1009.
+        });
+        from.on('error',error=>{
+          if(error.code==='WS_ERR_UNSUPPORTED_MESSAGE_LENGTH') {
+            logger({...receipt,state:'payload-too-large',transport:'websocket',limit_bytes:maxPayloadBytes});
+            if(to.readyState===WebSocket.OPEN)to.close(1009,'Jev proxy payload limit exceeded');
+            else if(to.readyState===WebSocket.CONNECTING)to.terminate();
+          } else {
+            logger({...receipt,state:'ws-transport-error'});
+            if(to.readyState!==WebSocket.CLOSING && to.readyState!==WebSocket.CLOSED)to.terminate();
+          }
+        });
       }
     });
   });

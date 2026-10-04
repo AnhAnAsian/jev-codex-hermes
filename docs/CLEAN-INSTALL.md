@@ -4,6 +4,12 @@ Two checks answer different questions. The public-checkout gate proves the sourc
 and installed package can load with synthetic configuration. The live check proves
 your actual clients, account and macOS startup work. Do not mark one as the other.
 
+The checklist below covers the default legacy proxy installation. For opt-in
+native mode, follow [native client setup](NATIVE-ROUTING.md) after installation,
+then separately check initial selection, follow-up, cold resume, manual models,
+model display and absence of Jev HTTP inference receipts. An automated package
+pass does not establish Hermes hook compatibility with a new active runtime.
+
 ## Fresh public checkout — about 3–5 minutes
 
 From a checkout, with Node 22+, Git and Python 3.11+:

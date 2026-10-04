@@ -1,0 +1,4 @@
+name: jev-first-request
+version: 1.0.0
+kind: standalone
+description: Choose a real model once before native OpenAI inference.

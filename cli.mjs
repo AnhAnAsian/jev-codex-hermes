@@ -97,7 +97,16 @@ async function doctor() {
     }
   }
   const manifest=readJSON(path.join(home,'integration.json'));
-  if(c.clients?.hermes)checks.push({check:'Hermes integration',ok:manifest.active===true && text(path.join(os.homedir(),'.hermes/config.yaml')).includes(endpoint()+'/hermes/'),detail:'Original provider owns authentication; live generation must be tested separately.'});
+  const nativeClients=readJSON(path.join(home,'native-clients.json'));
+  if(c.clients?.hermes) {
+    if(nativeClients.active)checks.push({check:'Hermes native first-request routing',
+      ok:text(path.join(nativeClients.hermesRoot || '', 'agent/turn_context.py')).includes('resolve_session_model(agent, user_message, conversation_history)') &&
+        fs.existsSync(path.join(os.homedir(),'.hermes/plugins/jev-first-request/plugin.yaml')) &&
+        !text(path.join(os.homedir(),'.hermes/config.yaml')).includes(endpoint()+'/hermes/codex'),
+      detail:'Hermes owns native authentication and inference. Revalidate after Hermes updates.'});
+    else checks.push({check:'Hermes integration',ok:manifest.active===true && text(path.join(os.homedir(),'.hermes/config.yaml')).includes(endpoint()+'/hermes/'),detail:'Original provider owns authentication; live generation must be tested separately.'});
+  }
+  if(nativeClients.active)checks.push({check:'Terminal native routing launcher',ok:text(path.join(os.homedir(),'.local/bin/codex')).includes('native-terminal.mjs')});
   if(c.clients?.claude) {
     checks.push({check:'Claude integration',ok:manifest.active===true && text(path.join(os.homedir(),'.claude/settings.json')).includes(endpoint()+'/claude')});
     const auth=spawnSync('claude',['auth','status','--json'],{encoding:'utf8',timeout:10000});
@@ -114,6 +123,12 @@ async function doctor() {
   if(checks.some(x=>!x.ok))process.exitCode=1;
 }
 async function client(name,args) {
+  let nativeClients;try{nativeClients=JSON.parse(fs.readFileSync(path.join(home,'native-clients.json'),'utf8'));}catch{}
+  if(['codex','hermes'].includes(name) && nativeClients?.active) {
+    const child=spawn(name,args,{env:{...process.env},stdio:'inherit'});
+    child.on('error',()=>{console.error('Client executable unavailable.');process.exitCode=1;});
+    child.on('exit',code=>{process.exitCode=code??1;});return;
+  }
   const c=readConfig(),h=await health();
   const env={...process.env};let command=name;
   // The persistent configuration handles normal clients. Named commands also
@@ -142,6 +157,8 @@ try {
   else if(action==='doctor')await doctor();
   else if(action==='desktop-enable'){await start();manage('desktop-enable');}
   else if(action==='desktop-disable')manage('desktop-disable');
+  else if(action==='desktop-native-enable' || action==='desktop-native-disable')manage(action);
+  else if(action==='native-clients-disable')manage(action);
   else if(action==='key')await privateKey();
   else if(action==='classify-test') {
     const c=readConfig();
@@ -175,5 +192,5 @@ try {
   }
   else if(action==='uninstall'){manage('uninstall');console.log('For full removal including private key/backups, follow the uninstall instructions in README.md.');}
   else if(['claude','codex','hermes'].includes(action))await client(action,process.argv.slice(3));
-  else console.log('Usage: jev-router start|stop|restart|status|doctor|hermes-picker|desktop-enable|desktop-disable|key [--openrouter]|classify-test|enable|disable|logs [--follow]|settings|config|uninstall|claude|codex|hermes');
+  else console.log('Usage: jev-router start|stop|restart|status|doctor|hermes-picker|desktop-enable|desktop-disable|desktop-native-enable|desktop-native-disable|key [--openrouter]|classify-test|enable|disable|logs [--follow]|settings|config|uninstall|claude|codex|hermes');
 }catch {console.error('Jev command failed. Run jev-router doctor, or jev-router disable to restore the normal clients.');process.exitCode=1;}

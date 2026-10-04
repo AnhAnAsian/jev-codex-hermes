@@ -144,6 +144,8 @@ def activate():
         from hermes_picker import enable as enable_hermes_picker
         enable_hermes_picker()
 def deactivate():
+    if read_json(STATE/'native-clients.json').get('active'):
+        subprocess.run([sys.executable,str(ROOT/'native_clients.py'),'disable'],check=True)
     if (ROOT/'desktop.py').exists():subprocess.run([sys.executable,str(ROOT/'desktop.py'),'disable'],check=True)
     manifest=read_json(STATE/'integration.json')
     if not manifest.get('active'):print('Client integration already disabled.');return
@@ -210,6 +212,10 @@ def main():
     elif action=='enable':activate()
     elif action=='disable':deactivate()
     elif action=='hermes-picker':subprocess.run([sys.executable,str(ROOT/'hermes_picker.py')],check=True)
+    elif action in ('desktop-native-enable','desktop-native-disable'):
+        subprocess.run([sys.executable,str(ROOT/'native_desktop.py'),action.rsplit('-',1)[1]],check=True)
+    elif action=='native-clients-disable':
+        subprocess.run([sys.executable,str(ROOT/'native_clients.py'),'disable'],check=True)
     elif action in ('desktop-enable','desktop-disable','desktop-refresh'):
         subprocess.run([sys.executable,str(ROOT/'desktop.py'),action.split('-')[1]],check=True)
     elif action=='uninstall':

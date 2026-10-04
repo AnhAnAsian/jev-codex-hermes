@@ -9,13 +9,15 @@ service; no additional gateway, server or frontend build is required.
 - Enabled: pauses automatic classification without removing client integrations.
   Virtual Jev selections use the configured fallback; real manual selections pass through.
 - Routing: conversation mode pins the first choice; turn mode classifies each new
-  human turn, while tool loops remain pinned. Mode changes apply on the next request.
+  human turn, while tool loops remain pinned. These timing controls apply to legacy
+  proxy routes. Native first-request mode always selects once for a new chat.
 - Tiers: provider-specific models/efforts with shared global tier toggles.
 - Fallback: used when classification is unavailable, or routing is paused.
 - Classification limit: 256–30,000 task characters; default 8,000.
 
 Saved model/effort mappings apply to new chats. Existing pinned chats keep their
-choice until an explicit override or service restart. After model ID changes, run
+choice until an explicit override. Legacy proxy pins reset on service restart;
+native clients restore saved selections on resume. After model ID changes, run
 `jev-router refresh-catalog` and restart Desktop to update advertised context
 limits. Model IDs must exist on your account; accepting a syntactically valid ID
 is not proof of provider availability. Codex suggestions come from its local
@@ -41,6 +43,7 @@ to `{"provider":"typesafe"}` or `{"provider":"openrouter","model":"jev-1.13"}`.
 Then use `jev-router key` or `jev-router key --openrouter` privately in a terminal.
 The hidden key command selects its backend and restarts the service. It clears
 conversation pins. Key values and upstream URLs are excluded from settings responses.
+This clears legacy service pins, not saved native client selections.
 
 Family-only mappings remain stored under `variants.codex.luna` / `variants.codex.sol`
 and are editable with the Profile selector.
@@ -94,7 +97,8 @@ API authentication, with no consumer OAuth/subscription routing claim. See
 [client support](CLIENTS.md).
 
 Timing is independent: Codex, Hermes and Claude can each choose once per conversation
-or once per new human turn. Tool loops stay pinned in either mode. Profile edits
+or once per new human turn in legacy proxy mode. Native clients always select once
+from the initial task, regardless of these timing settings. Tool loops stay pinned. Profile edits
 affect new conversations; explicit overrides retain their existing behavior.
 When `routing.claude` is absent, the optional Claude integration defaults to
 per-turn classification; the example Codex/Hermes maps use conversation timing.

@@ -4,12 +4,19 @@ import os from 'node:os';
 import {classifierProvider} from './classifier-client.mjs';
 export const home = process.env.JEV_SERVICE_HOME || path.join(os.homedir(), '.config/jev-router');
 export const configPath = path.join(home, 'config.json');
+export const DEFAULT_MAX_PAYLOAD_BYTES = 128*1024*1024;
+export function payloadLimit(config) {
+  const limit=config.maxPayloadBytes ?? DEFAULT_MAX_PAYLOAD_BYTES;
+  if(!Number.isSafeInteger(limit) || limit<1024*1024 || limit>512*1024*1024)throw new Error('invalid_payload_limit');
+  return limit;
+}
 export const labels = {haiku:'FAST', sonnet:'BALANCED', opus:'STRONG', fable:'LONG'};
 export const internal = Object.fromEntries(Object.entries(labels).map(([k,v])=>[v,k]));
 const realModel=model=>typeof model==='string' && /^[a-zA-Z0-9._\-:\[\]]{1,120}$/.test(model) && !model.includes('jev-') && model!=='jev-auto';
 const effort=value=>value==null || ['none','minimal','low','medium','high','xhigh','max','ultra'].includes(value);
 export function validateConfig(c) {
   classifierProvider(c);
+  payloadLimit(c);
   if(c.host!=='127.0.0.1')throw new Error('loopback_required');
   if(!Number.isInteger(c.port) || c.port<1024 || c.port>65535)throw new Error('invalid_port');
   if(typeof c.enabled!=='boolean' || !c.clients || ['codex','hermes','claude'].some(k=>typeof c.clients[k]!=='boolean'))throw new Error('invalid_clients');
@@ -66,7 +73,7 @@ export function loadKey(config=readConfig()) {
 }
 export function safeLog(entry) {
   fs.mkdirSync(home,{recursive:true,mode:0o700});
-  const allowed = ['client','tier','model','effort','confidence','latency_ms','state','status','served_model','transport','request_id','subagent','conversation_id','classifier_model','variant'];
+  const allowed = ['client','tier','model','effort','confidence','latency_ms','state','status','served_model','transport','request_id','subagent','conversation_id','classifier_model','variant','payload_bytes','limit_bytes'];
   const d = {timestamp:new Date().toISOString()};
   for (const k of allowed) if (entry[k] !== undefined) d[k] = entry[k];
   const p=path.join(home,'decisions.jsonl');
