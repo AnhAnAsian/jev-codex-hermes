@@ -109,19 +109,46 @@ does not survive launcher exit.
 
 Preserving conversation input and the same real model makes cached input eligible
 for reuse; neither native routing nor an unchanged chat guarantees a cache hit.
-Live CLI follow-ups showed cached input with **unchanged effort**. We did not
-verify cache reuse across effort changes in native Codex.
+Native Codex 0.160.0 supports cache-preserving effort changes behind its
+`reasoning_effort_override` feature. Enable it persistently in `~/.codex/config.toml`:
+
+```toml
+[features]
+reasoning_effort_override = true
+```
+
+Add the key to an existing `[features]` table; do not create a duplicate table.
+Restart Desktop and terminal Codex processes to load the setting. The native
+Desktop adapter and terminal launcher inherit it. Check `codex features list`.
+Native Codex gates the behavior on the OpenAI provider and model capability
+`supports_reasoning_effort_updates`; Jev does not inject history items itself.
+On real `gpt-6.1-sol`, a synthetic native-engine test retained 18,944 cached input
+tokens across low → high and 19,072 across high → low. With the feature off, the
+first high request lost the warmed prefix. This is engine-level evidence, not a
+guarantee of cache availability on every request or acceptance of every UI control.
+See [OpenAI's native implementation](https://github.com/openai/codex/pull/43110).
 
 Hermes currently sends effort as request-level `reasoning.effort`. Changing it can
 rewrite hidden model instructions and prevent reuse of the earlier prefix. On
 supported GPT-6 models in standard single-agent mode, OpenAI documents appending
 a `configuration_update` input item while keeping request-level effort unchanged
-to preserve that prefix. This adapter does not implement those items. See
+to preserve that prefix. Hermes' default runtime does not implement those items
+through this adapter. A complete integration needs to persist the original
+request effort and ordered updates across agent reconstruction/resume, and scope
+the baseline to the session, model, provider and compacted context. Validate actual
+cache counts across effort changes, cold resume and compaction before claiming
+support. See
 [prompt caching](https://developers.openai.com/api/docs/guides/prompt-caching)
 and [reasoning changes](https://developers.openai.com/api/docs/guides/reasoning#change-reasoning-mid-conversation).
 
-Keep the same model/effort when predictable cache reuse matters. Changes to tools,
-instructions, compaction, retention or the model can also affect reuse.
+Hermes also offers an optional `codex_app_server` runtime that can inherit Codex's
+feature. It changes tool execution: Codex runs the loop, and Hermes documents that
+`delegate_task`, `memory`, `session_search` and `todo` are unavailable. This is not
+an automatic migration; keep the default Hermes runtime when those tools matter.
+
+Keep Hermes' effort unchanged until its default runtime integration is verified.
+Changes to tools, instructions, compaction, retention or the model can also
+affect reuse.
 
 ## Verify and restore
 

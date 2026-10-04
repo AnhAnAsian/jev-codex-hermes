@@ -102,7 +102,11 @@ dated observations, not clean-Mac or future-client compatibility guarantees.
 
 All new live probes used synthetic tasks and executed no tools. Full tool/approval
 UI acceptance, comprehensive compaction, clean-account login startup and reboot
-remain untested. Native Codex effort-swap cache behavior is unverified; Hermes
+remain untested. A later synthetic native Codex 0.160.0 probe with
+`reasoning_effort_override=true` confirmed Sol/OpenAI metadata and retained
+18,944 cached input tokens on low → high, then 19,072 on high → low. The same
+probe with the feature off lost the warmed prefix on the first high request.
+No tools ran, and Desktop UI controls were not clicked. Hermes
 changes request-level effort and does not implement cache-preserving
 `configuration_update` items. See [cache limits](NATIVE-ROUTING.md#reasoning-changes-and-caching).
 Hermes upgrades can replace the local hook and require revalidation/reapplication.

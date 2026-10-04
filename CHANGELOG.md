@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Correct effort-cache guidance: native Codex 0.160.0 already implements trusted
+  configuration updates behind `reasoning_effort_override`. Document persistent
+  setup and live Sol low/high cache evidence. Hermes' default runtime remains
+  separate; its optional Codex runtime changes tool availability.
+
 ### Native first-request routing — 2026-10-04
 
 - Add opt-in native Desktop routing through a reversible `CODEX_CLI_PATH` override.

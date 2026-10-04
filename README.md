@@ -247,10 +247,11 @@ Live native Hermes first/follow-up/manual-model requests and terminal
 interactive/exec/resume requests passed; native CLI cached input was observed
 with unchanged effort. Live Anthropic generation, comprehensive Desktop Computer
 Use/compaction, all real coding tiers and reboot acceptance remain outstanding.
-The new live probes executed no tools. Cache hits aren't guaranteed, and changing
-effort can alter hidden instructions. Cache-preserving `configuration_update`
-items are not implemented by this adapter; effort-swap cache reuse is unverified
-in native Codex. See [cache limits](docs/NATIVE-ROUTING.md#reasoning-changes-and-caching).
+The new live probes executed no tools. Cache hits aren't guaranteed. Native Codex
+0.160.0 preserved cached prefixes across Sol effort changes with
+`features.reasoning_effort_override=true`; the native engine owns the updates.
+Hermes' default runtime still changes request-level effort and needs a separate
+integration. See [setup and cache limits](docs/NATIVE-ROUTING.md#reasoning-changes-and-caching).
 Linux CI doesn't imply a Linux startup installer.
 
 The release pins unmodified upstream in `upstream.lock.json`. Updating this adapter
