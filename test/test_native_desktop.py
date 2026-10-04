@@ -44,7 +44,8 @@ class NativeDesktopTests(unittest.TestCase):
     def test_an_existing_cli_override_is_preserved_without_any_writes(self):
         with tempfile.TemporaryDirectory() as temp:
             home = pathlib.Path(temp); state, fake, _ = self.fixture(home)
-            with self.patched(home, state), patch.object(native, 'environment_value', return_value='/synthetic/other-cli'):
+            with self.patched(home, state), patch.object(native.sys, 'platform', 'darwin'), \
+                    patch.object(native, 'environment_value', return_value='/synthetic/other-cli'):
                 original = (state / 'config.json').read_bytes()
                 with self.assertRaisesRegex(RuntimeError, 'existing_cli_runtime_override_preserved'): native.enable(cli=fake)
                 self.assertEqual((state / 'config.json').read_bytes(), original)
