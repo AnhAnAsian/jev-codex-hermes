@@ -31,6 +31,9 @@ The native terminal launcher supports normal `codex`, interactive/exec/resume an
 [native setup and limits](NATIVE-ROUTING.md). If Desktop is missing profiles, run
 `jev-router refresh-catalog` and restart Desktop. `doctor` mainly checks legacy
 configuration; native activation needs a live first-turn/follow-up check.
+For a legacy SSH host, run `jev-router desktop-check` on the host. If it reports a
+pending reload, finish chats, run `jev-router desktop-reload`, then reconnect.
+See [SSH recovery](OPERATIONS.md#ssh-codex-shows-custom--benutzerdefiniert-or-stalls-after-the-first-message).
 
 ## First-party Hermes on Codex OAuth
 

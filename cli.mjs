@@ -15,7 +15,7 @@ const action=process.argv[2]||'status';
 const endpoint=()=>`http://127.0.0.1:${readConfig().port}`;
 const saveConfig=c=>{const tmp=configPath+'.tmp';fs.writeFileSync(tmp,JSON.stringify(c,null,2)+'\n',{mode:0o600});fs.renameSync(tmp,configPath);};
 function manage(command) {
-  const r=spawnSync(process.env.JEV_PYTHON || 'python3',[path.join(ROOT,'manage.py'),command],{stdio:'inherit',env:process.env});
+  const r=spawnSync(process.env.JEV_PYTHON || 'python3',[path.join(ROOT,'manage.py'),command],{stdio:'inherit',env:{...process.env,JEV_NODE:process.execPath}});
   if(r.status!==0)throw new Error('configuration_failed');
 }
 function launch(args,quiet=false) {
@@ -91,6 +91,9 @@ async function doctor() {
     const cfg=text(path.join(os.homedir(),'.codex/config.toml'));
     const catalog=readJSON(path.join(home,'desktop-models.json'));
     checks.push({check:'Desktop provider and picker configured',ok:record.active===true && spawnSync(process.env.JEV_PYTHON||'python3',['-c','import json,pathlib,sys,tomllib; c=tomllib.loads(pathlib.Path(sys.argv[1]).read_text()); r=json.loads(pathlib.Path(sys.argv[2]).read_text()); sys.exit(0 if c.get("model_providers",{}).get("jev")==r.get("provider") and c.get("model_provider")=="jev" and c.get("model_catalog_json")==sys.argv[3] else 1)',path.join(os.homedir(),'.codex/config.toml'),path.join(home,'desktop-picker.json'),path.join(home,'desktop-models.json')],{stdio:'ignore'}).status===0 && catalog.models?.some(m=>m.slug==='gpt-jev-auto'),detail:'Configuration check; a normal Desktop request is a separate acceptance test.'});
+    const runtime=spawnSync(process.env.JEV_PYTHON||'python3',[path.join(ROOT,'desktop.py'),'check','--json'],{encoding:'utf8',timeout:35000,env:{...process.env,JEV_NODE:process.execPath}});
+    let state='unavailable';try{state=JSON.parse(runtime.stdout).state;}catch{}
+    checks.push({check:'SSH Codex has loaded the catalog',ok:['ready','not-running'].includes(state),state,detail:state==='not-running'?'No SSH app-server is running.':state==='ready'?'Live model/list checked.':'Finish active chats, then run jev-router desktop-reload; reconnect SSH if runtime verification is unavailable.'});
     const models=readJSON(path.join(os.homedir(),'.codex/models_cache.json')).models||[];
     for(const [tier,spec] of Object.entries(c.providers.codex.tiers)) {
       const model=models.find(m=>m.slug===spec.model);
@@ -164,6 +167,7 @@ try {
   else if(action==='doctor')await doctor();
   else if(action==='desktop-enable'){await start();manage('desktop-enable');}
   else if(action==='desktop-disable')manage('desktop-disable');
+  else if(['desktop-check','desktop-reload'].includes(action))manage(action);
   else if(action==='desktop-native-enable' || action==='desktop-native-disable')manage(action);
   else if(action==='native-clients-disable')manage(action);
   else if(action==='hermes-effort-enable' || action==='hermes-effort-disable')manage(action);
@@ -175,7 +179,7 @@ try {
   }
   else if(action==='enable'){await start();const c=readConfig();c.enabled=true;saveConfig(c);refreshCatalog();manage('enable');if(c.clients?.hermes)manage('hermes-picker');if(c.clients?.codex)manage('desktop-enable');console.log('Restart enabled clients and select Jev to route new conversations.');}
   else if(action==='hermes-picker')manage('hermes-picker');
-  else if(action==='refresh-catalog'){refreshCatalog();await health();console.log('Runtime and Desktop picker catalogs refreshed from the client cache. Restart Desktop to reload the picker.');}
+  else if(action==='refresh-catalog'){refreshCatalog();await health();console.log('Runtime and Desktop picker catalogs refreshed from the client cache. Restart local Desktop to reload the picker; follow the SSH runtime diagnostic above.');}
   else if(action==='update') {
     const upstream=path.join(ROOT,'upstream');
     const old=spawnSync('git',['-C',upstream,'rev-parse','HEAD'],{encoding:'utf8'}).stdout.trim();
@@ -200,5 +204,5 @@ try {
   }
   else if(action==='uninstall'){manage('uninstall');console.log('For full removal including private key/backups, follow the uninstall instructions in README.md.');}
   else if(['claude','codex','hermes'].includes(action))await client(action,process.argv.slice(3));
-  else console.log('Usage: jev-router start|stop|restart|status|doctor|hermes-picker|hermes-effort-enable|hermes-effort-disable|desktop-enable|desktop-disable|desktop-native-enable|desktop-native-disable|key [--openrouter]|classify-test|enable|disable|logs [--follow]|settings|config|uninstall|claude|codex|hermes');
+  else console.log('Usage: jev-router start|stop|restart|status|doctor|hermes-picker|hermes-effort-enable|hermes-effort-disable|desktop-enable|desktop-disable|desktop-check|desktop-reload|refresh-catalog|desktop-native-enable|desktop-native-disable|key [--openrouter]|classify-test|enable|disable|logs [--follow]|settings|config|uninstall|claude|codex|hermes');
 }catch {console.error('Jev command failed. Run jev-router doctor, or jev-router disable to restore the normal clients.');process.exitCode=1;}

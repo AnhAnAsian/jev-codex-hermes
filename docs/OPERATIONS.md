@@ -148,6 +148,45 @@ normal health. Startup still requires a valid config. `refresh-catalog` updates
 both generated catalogs and the running service metadata; restart Desktop to
 reload its picker. Only explicit supported Hermes providers are integrated.
 
+### SSH Codex shows Custom / Benutzerdefiniert or stalls after the first message
+
+An SSH Codex app-server can keep running after JEV installs a newer provider or
+catalog. Restarting the local Desktop app alone may reconnect to that old process.
+Its model list can lack the selected model, causing a custom label and fallback
+context limits. Repeated compaction can then prevent a follow-up response.
+
+On the SSH host:
+
+1. Run `jev-router desktop-check` to compare live `model/list` with the configured catalog.
+2. Finish running chats and keep them idle; run `jev-router desktop-reload` if a reload is required.
+3. Reconnect the host in Desktop and send a short message followed by one follow-up.
+
+Enable, disable and catalog refresh check the SSH runtime after their writes;
+`doctor` also reports this separately from file configuration. Checks never
+restart it automatically. A private `codex-runtime-reload.json` journal retains
+pending changes, including context-only changes with unchanged model IDs. A new
+process clears that journal only after its live catalog matches.
+
+Reload targets only the current user's uniquely owned Codex Unix app-server at
+`~/.codex/app-server-control/app-server-control.sock`. It checks all loaded chat
+pages without requesting turn contents and refuses observed active/unknown
+statuses, including approval waits. It verifies process identity again, sends
+one graceful SIGTERM, then verifies the replacement. Desktop's automatic restart
+is accepted; an idempotent `codex app-server daemon start` is attempted only if
+the socket disappears. A replacement is never terminated again, and no binary
+is upgraded. Avoid starting new work during reload: the protocol cannot lock
+other clients out between the final status check and the signal.
+
+If ownership, RPC or startup cannot be verified, the command reports failure
+and retains pending changes. Finish chats, disconnect/reconnect the SSH host and
+repeat `desktop-check`. A stopped SSH service needs no reload; its next start
+loads the configuration. Local Desktop processes using stdio still need a
+normal Desktop restart. These commands use the same `~/.codex` scope as the
+adapter's configuration installer.
+Reload supports direct Codex socket owners in the legacy configuration. An
+opt-in native bridge owned by Node is refused; follow the native client's
+restart instructions instead.
+
 ## Browser settings
 
 Use `jev-router settings` for common routing controls. Each save validates a merge,

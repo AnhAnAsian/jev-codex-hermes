@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Fix missing SSH Codex runtime detection after legacy provider/catalog changes.
+  Enable, disable, refresh and doctor now distinguish written settings from a
+  live loaded catalog. Add `desktop-check` and explicit `desktop-reload` with
+  idle-chat and process-ownership checks, context-change journaling, targeted
+  graceful reload and Desktop auto-restart handling. Add Unix WebSocket and
+  configuration integration regression tests and SSH recovery instructions.
+
 - Add native Hermes cache-preserving effort updates on supported standard GPT-6
   Responses requests. Preserve the initial request effort, append trusted updates,
   replay bounded private metadata on resume and establish a fresh marker after

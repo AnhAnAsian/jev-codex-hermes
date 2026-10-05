@@ -134,3 +134,44 @@ class InstallerTests(ConfigurationTests):
                         self.assertFalse((h/'.local/share/jev-router').exists());self.assertFalse((h/'.local/bin/jev-router').exists());self.assertFalse((h/'.config/jev-router').exists())
                         self.assertTrue(any(args[-1]=='disable' for args,kw in calls));self.assertEqual((h/'.codex/config.toml').read_text(),'model="gpt-6.1-sol"\n')
                     else:m.main();self.assertIn('export JEV_PYTHON=',(h/'.local/bin/jev-router').read_text())
+
+class RuntimeIntegrationTests(unittest.TestCase):
+    fixture=ConfigurationTests.fixture
+    desktop_fixture=RecoveryTests.desktop_fixture
+    def test_runtime_checks_follow_final_writes_and_refresh_noop_is_not_a_change(self):
+        with tempfile.TemporaryDirectory() as temp:
+            h=pathlib.Path(temp);state,config,original=self.desktop_fixture(h);calls=[]
+            def check(action='check',changed=False,as_json=False):
+                parsed=__import__('tomllib').loads(config.read_text())
+                calls.append((changed,parsed.get('model_provider'),json.loads((state/'desktop-picker.json').read_text())['active']))
+                return {'state':'not-running'}
+            with patch.object(desktop,'H',h),patch.object(desktop,'STATE',state),patch.object(desktop,'CONFIG',config),patch.object(desktop,'RECORD',state/'desktop-picker.json'),patch.object(desktop,'CATALOG',state/'desktop-models.json'),patch.object(desktop,'runtime_check',side_effect=check):
+                desktop.enable();desktop.enable();desktop.refresh_catalog();desktop.disable()
+                cache=json.loads((h/'.codex/models_cache.json').read_text());cache['models'][0]['context_window']=300000;(h/'.codex/models_cache.json').write_text(json.dumps(cache))
+                desktop.refresh_catalog()
+            self.assertEqual(calls,[(True,'jev',True),(False,'jev',True),(False,'jev',True),(True,None,False),(False,None,False)])
+            self.assertEqual(config.read_text(),original)
+
+    def test_runtime_unavailable_keeps_config_and_pending_reload(self):
+        with tempfile.TemporaryDirectory() as temp:
+            h=pathlib.Path(temp);state,config,original=self.desktop_fixture(h)
+            (state/'codex-runtime-reload.json').write_text(json.dumps({'identity':'previous-process'}))
+            with patch.object(desktop,'H',h),patch.object(desktop,'STATE',state),patch.object(desktop,'CONFIG',config),patch.object(desktop,'RECORD',state/'desktop-picker.json'),patch.object(desktop,'CATALOG',state/'desktop-models.json'),patch.object(desktop.subprocess,'run',side_effect=OSError('private details')):
+                desktop.enable()
+            self.assertIn('model_provider = "jev"',config.read_text())
+            self.assertEqual(json.loads((state/'codex-runtime-reload.json').read_text()),{'identity':None})
+            self.assertTrue(json.loads((state/'desktop-picker.json').read_text())['active'])
+
+    def test_helper_receives_scoped_home_and_catalog_without_credentials(self):
+        with tempfile.TemporaryDirectory() as temp:
+            h=pathlib.Path(temp);state,config,original=self.desktop_fixture(h)
+            config.write_text('model_catalog_json = "'+str(state/'desktop-models.json')+'"\n'+original)
+            (state/'desktop-models.json').write_text(json.dumps({'models':[{'slug':'gpt-jev-sol','display_name':'Jev Sol'},{'slug':'gpt-6.1-sol'},{'slug':'hidden','visibility':'hide'}]}))
+            result=__import__('subprocess').CompletedProcess([],0,stdout='{"state":"ready","busy":0}')
+            with patch.object(desktop,'H',h),patch.object(desktop,'STATE',state),patch.object(desktop,'CONFIG',config),patch.object(desktop.subprocess,'run',return_value=result) as run:
+                self.assertEqual(desktop.runtime_check()['state'],'ready')
+            options=json.loads(run.call_args.kwargs['input'])
+            self.assertEqual(options['codexHome'],str(h/'.codex'))
+            self.assertEqual(options['state'],str(state))
+            self.assertEqual(options['expected'],[{'id':'gpt-jev-sol','displayName':'Jev Sol'},{'id':'gpt-6.1-sol'}])
+            self.assertEqual(set(options),{'action','changed','codexHome','state','expected','codex'})

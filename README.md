@@ -162,7 +162,10 @@ from automatic defaults. Available models and effort levels depend on the provid
 Each save validates a bounded merge, makes a private backup and rejects stale edits.
 New conversations use the new map; existing pins keep their choice. After changing
 model IDs, run `jev-router refresh-catalog` and restart Desktop to refresh context
-metadata. Keys and upstream URLs aren't exposed in the editor.
+metadata. For SSH hosts, follow the runtime diagnostic printed by the command:
+finish active chats, run `jev-router desktop-reload` on that host, then reconnect.
+`jev-router desktop-check` verifies the running SSH service's model list.
+Keys and upstream URLs aren't exposed in the editor.
 
 Read [the settings guide](docs/SETTINGS.md) for exact behavior.
 
