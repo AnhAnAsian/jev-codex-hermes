@@ -1,12 +1,13 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ask Jev · Choose before you chat</title><link rel="stylesheet" href="/advice.css"><script src="/advice.js" defer></script></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ask Jev · Choose before you chat</title><link rel="stylesheet" href="/shared.css"><link rel="stylesheet" href="/advice.css"><script type="module" src="/advice.js"></script></head>
 <body><main>
-<header><span class="wordmark">Jev <span>↗</span></span><span id="health">Checking connection…</span><a href="/settings">Settings</a></header>
+<header class="app-header"><a class="wordmark" href="/">jev<span aria-hidden="true">↗</span></a><nav aria-label="Router"><a href="/" aria-current="page">Ask Jev</a><a href="/settings">Settings</a></nav><div class="health-group"><span id="health" class="status" role="status">Checking…</span><button id="check-health" class="text-button" type="button">Check again</button></div></header>
+<p id="health-detail" class="health-detail" role="status" hidden></p>
 <h1>Choose before<br>you chat.</h1><p class="intro">Get a model recommendation for a new conversation. Keep that model and reasoning effort for the task.</p>
 <form id="advice-form"><label for="provider">Where will you work?</label><select id="provider"><option value="codex">Codex Desktop / Hermes Codex</option><option value="claude">Claude Code / Hermes Claude</option></select>
 <label for="task">Your first task</label><textarea id="task" rows="6" maxlength="30000" required placeholder="Add a small API endpoint following the existing project pattern."></textarea>
-<p class="privacy">Clicking Ask Jev sends up to 8,000 characters to OpenRouter and TypeSafe. Task text is not saved or logged here.</p>
-<button id="ask" type="submit">Ask Jev <span aria-hidden="true">↗</span></button></form>
+<p id="privacy" class="privacy" aria-live="polite">Checking classification settings…</p>
+<button id="ask" type="submit" disabled>Ask Jev <span aria-hidden="true">↗</span></button></form>
 <section id="result" hidden aria-live="polite"><span id="tier"></span><h2 id="model"></h2><p id="details"></p><p id="caution"></p><ol><li>Select this model and reasoning effort in your client.</li><li>Paste your task into a new chat.</li><li>Keep your selection for the conversation.</li></ol><button type="button" id="copy" class="secondary">Copy task</button></section>
 <p id="error" role="alert" hidden></p><footer>Advice only. This page does not change models, create subagents, or alter client settings.</footer>
 </main></body></html>

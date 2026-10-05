@@ -15,6 +15,12 @@ service; no additional gateway, server or frontend build is required.
 - Fallback: used when classification is unavailable, or routing is paused.
 - Classification limit: 256–30,000 task characters; default 8,000.
 
+The main view is a profile editor. Global tier switches and client timing live in
+**Advanced**, and fallback controls open from a compact summary. Exact IDs can be
+shown in Advanced; custom/unlisted Codex IDs remain visible with their warnings.
+An idle page has no sticky save bar. Edits show the affected profile names or
+“Global settings”; a new edit clears the previous save message.
+
 Saved model/effort mappings apply to new chats. Existing pinned chats keep their
 choice until an explicit override. Legacy proxy pins reset on service restart;
 native clients restore saved selections on resume. After model ID changes, run
@@ -30,6 +36,19 @@ replacement is atomic with owner-only permissions. An optimistic revision check
 rejects stale browser edits. Reload to pick up external edits, then reapply.
 External editors should still avoid saving at the exact same moment as the UI;
 there is no cross-process filesystem lock.
+
+The save response describes the exact committed snapshot; it does not reread the
+file after replacing it. If catalog/service refresh fails afterward, the response
+still confirms the save and separately asks you to refresh. An uncertain write
+error asks you to reload before retrying and never promises a rollback.
+
+Both pages share Ready / Paused / Needs attention / Unavailable status handling.
+**Check again** refreshes status on demand. When configuration is invalid, the
+service keeps its last valid snapshot and the page states that explicitly.
+Ask Jev displays the effective classifier route and task-character limit. If
+either changes after the page loaded, it updates the notice and requires another
+Ask click before classification; no automatic retry sends the task under a
+different disclosure.
 
 ## Advanced configuration
 
@@ -102,3 +121,19 @@ from the initial task, regardless of these timing settings. Tool loops stay pinn
 affect new conversations; explicit overrides retain their existing behavior.
 When `routing.claude` is absent, the optional Claude integration defaults to
 per-turn classification; the example Codex/Hermes maps use conversation timing.
+
+Settings use Desktop mode and the local native-client installation journal to
+describe configured capabilities, not to claim a live client connection. Native
+Desktop/CLI show their fixed once-per-chat behavior. If only one of Desktop/CLI
+uses the proxy, the control names that client. With native Hermes Codex installed,
+the Hermes timing selector is explicitly for Hermes Claude proxy chats. Disabled
+integrations and unreadable installation metadata do not offer timing selectors.
+Hidden preferences remain saved, so later returning to proxy mode preserves them.
+
+Catalog parsing is cached against device/inode/size and high-resolution file
+modification/change times, checked on every read. Cached values are immutable.
+External edits, replacements, deletions, malformed catalogs and restored priority
+are regression-tested. Configuration reads remain uncached.
+
+See [browser acceptance scenarios](SETTINGS-ACCEPTANCE.md) for the UI verification
+flow. Unit and HTTP regression tests are included in `npm run validate`.

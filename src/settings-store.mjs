@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
 import {configPath,validateConfig,loadModelCatalog} from './settings.mjs';
+import {routingCapabilities,classificationMetadata} from './ui-metadata.mjs';
 
 const tiers=['FAST','BALANCED','STRONG','LONG'];
 const revision=text=>createHash('sha256').update(text).digest('hex');
@@ -23,11 +24,16 @@ export class SettingsStore {
   read() {
     const text=fs.readFileSync(this.file,'utf8');
     const c=validateConfig(JSON.parse(text));
-    const catalog=this.catalog();
+    return this.project(c,text);
+  }
+  project(c,text) {
+    let catalog,catalogUnavailable=false;
+    try {catalog=this.catalog();}catch {catalogUnavailable=true;}
     const models=(Array.isArray(catalog?.models)?catalog.models:[]).filter(m=>m && m.visibility!=='hide' && typeof m.slug==='string' && /^[a-zA-Z0-9._\-:\[\]]{1,120}$/.test(m.slug) && !m.slug.includes('jev-'))
       .map(m=>({id:m.slug,efforts:(Array.isArray(m.supported_reasoning_levels)?m.supported_reasoning_levels:[]).map(e=>e?.effort).filter(e=>typeof e==='string' && /^[a-z]{1,20}$/.test(e))}));
-    return {revision:revision(text),settings:editableSettings(c),models,
-      integrations:Object.fromEntries(['codex','hermes','claude'].map(n=>[n,c.clients[n]])),classifier:c.classifier?.provider||'typesafe'};
+    return {revision:revision(text),settings:editableSettings(c),models,catalogUnavailable,
+      integrations:Object.fromEntries(['codex','hermes','claude'].map(n=>[n,c.clients[n]])),
+      capabilities:routingCapabilities(c,path.dirname(this.file)),...classificationMetadata(c)};
   }
   save(input) {
     keys(input,['revision','settings']);
@@ -56,13 +62,18 @@ export class SettingsStore {
     fs.mkdirSync(backup,{recursive:true,mode:0o700});
     fs.writeFileSync(path.join(backup,'config.json'),original,{mode:0o600,flag:'wx'});
     const tmp=path.join(dir,'.config-'+randomUUID()+'.tmp');
+    const text=JSON.stringify(c,null,2)+'\n';
+    // Prepare the exact response before committing. A post-commit disk read must
+    // never turn a successful save into a claim that the old config was retained.
+    const result={...this.project(c,text),modelsChanged:previousModels!==JSON.stringify(modelIds(c))};
+    let committed=false;
     try {
-      fs.writeFileSync(tmp,JSON.stringify(c,null,2)+'\n',{mode:0o600,flag:'wx'});
+      fs.writeFileSync(tmp,text,{mode:0o600,flag:'wx'});
       // Reject a concurrent external editor before replacing its newer contents.
       if(fs.readFileSync(this.file,'utf8')!==original)fail('settings_changed',409);
       fs.renameSync(tmp,this.file);
-    }finally{fs.rmSync(tmp,{force:true});}
-    const modelsChanged=previousModels!==JSON.stringify(modelIds(c));
-    return {...this.read(),modelsChanged};
+      committed=true;
+    }finally{if(!committed)fs.rmSync(tmp,{force:true});}
+    return result;
   }
 }

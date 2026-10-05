@@ -29,6 +29,12 @@ export function settingsEqual(a,b) {
   const ordered=s=>({...s,disabledTiers:[...s.disabledTiers].sort()});
   return JSON.stringify(ordered(a))===JSON.stringify(ordered(b));
 }
+export function changedSections(before,after) {
+  const changed=profileChoices(after).filter(p=>JSON.stringify(profileMap(before,p.id))!==JSON.stringify(profileMap(after,p.id))).map(p=>p.name.split(' · ')[0]);
+  if(['enabled','classificationMaxChars','routing'].some(key=>JSON.stringify(before[key])!==JSON.stringify(after[key])) ||
+    JSON.stringify([...before.disabledTiers].sort())!==JSON.stringify([...after.disabledTiers].sort()))changed.push('Global settings');
+  return changed;
+}
 export const profileProvider=id=>id==='claude'?'claude':'codex';
 export const profileFamily=id=>['luna','sol'].includes(id)?id:null;
 export function profileMap(settings,id) {
@@ -45,6 +51,7 @@ export function profileError(settings) {
     const p=profileMap(settings,id),family=profileFamily(id);
     for(const [field,model] of [...Object.entries(p.tiers).map(([t,s])=>[t,s.model]),['fallback',p.fallbackModel]]) {
       if(!model)return {profile:id,field,message:'Enter a model ID for '+name+' '+field+'.'};
+      if(!/^[a-zA-Z0-9._\-:\[\]]{1,120}$/.test(model))return {profile:id,field,message:'Check the model ID for '+name+' '+field+'. Use only letters, numbers, dots, underscores, hyphens, colons and brackets.'};
       if(model.includes('jev-') || model==='jev-auto')return {profile:id,field,message:'Use a real provider model ID for '+name+' '+field+'.'};
       if(family&&!model.endsWith('-'+family))return {profile:id,field,message:name+' requires a model ID ending in -'+family+' for '+field+'.'};
     }

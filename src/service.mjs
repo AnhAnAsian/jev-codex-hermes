@@ -7,6 +7,7 @@ import WebSocket,{WebSocketServer} from 'ws';
 import {readConfig,loadKey,safeLog,loadModelCatalog,payloadLimit} from './settings.mjs';
 import {RoutingEngine} from './routing.mjs';
 import {SettingsStore} from './settings-store.mjs';
+import {classificationMetadata} from './ui-metadata.mjs';
 const version=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8')).version;
 
 function allowed(req) {
@@ -67,7 +68,8 @@ export async function startService({config=readConfig,classifier,logger=safeLog,
     if(!allowed(req))return res.writeHead(403).end();
     if(req.method==='GET' && req.url==='/favicon.ico')return res.writeHead(204).end();
     const assets={'/':['index.html','text/html; charset=utf-8'],'/advice.js':['advice.js','text/javascript; charset=utf-8'],'/advice.css':['advice.css','text/css; charset=utf-8'],
-      '/settings':['settings.html','text/html; charset=utf-8'],'/settings.js':['settings.js','text/javascript; charset=utf-8'],'/settings-controls.js':['settings-controls.js','text/javascript; charset=utf-8'],'/settings.css':['settings.css','text/css; charset=utf-8']};
+      '/settings':['settings.html','text/html; charset=utf-8'],'/settings.js':['settings.js','text/javascript; charset=utf-8'],'/settings-controls.js':['settings-controls.js','text/javascript; charset=utf-8'],'/settings.css':['settings.css','text/css; charset=utf-8'],
+      '/shared.css':['shared.css','text/css; charset=utf-8'],'/status.js':['status.js','text/javascript; charset=utf-8']};
     if(req.method==='GET' && assets[req.url]) {
       const [file,type]=assets[req.url];
       return res.writeHead(200,{'content-type':type,'cache-control':'no-store','x-content-type-options':'nosniff',
@@ -88,11 +90,12 @@ export async function startService({config=readConfig,classifier,logger=safeLog,
         const chunks=[];let size=0;
         for await(const chunk of req){size+=chunk.length;if(size>32768)return res.writeHead(413).end('{"error":"Settings payload too large."}');chunks.push(chunk);}
         const saved=settingsStore.save(JSON.parse(Buffer.concat(chunks).toString('utf8')));
-        current();refreshModels();
-        return res.end(JSON.stringify({...saved,token:settingsToken,saved:true}));
+        let refreshRequired=false;
+        try {current();refreshModels();refreshRequired=degraded;}catch {refreshRequired=true;}
+        return res.end(JSON.stringify({...saved,token:settingsToken,saved:true,refreshRequired}));
       }catch(error) {
         const status=error.status===409?409:error.status===400 || error instanceof SyntaxError?400:500;
-        const message=status===409?'Settings changed elsewhere. Reload and apply your changes again.':status===400?'Invalid settings. Check model IDs, reasoning levels and classification limit.':'Settings could not be saved. Your previous configuration is retained.';
+        const message=status===409?'Settings changed elsewhere. Reload and apply your changes again.':status===400?'Invalid settings. Check model IDs, reasoning levels and classification limit.':'Save status could not be confirmed. Reload settings to check before retrying.';
         return res.writeHead(status).end(JSON.stringify({error:message}));
       }
     }
@@ -105,13 +108,13 @@ export async function startService({config=readConfig,classifier,logger=safeLog,
         for await(const chunk of req){size+=chunk.length;if(size>131072)return res.writeHead(413).end();chunks.push(chunk);}
         const input=JSON.parse(Buffer.concat(chunks).toString());
         if(typeof input.prompt!=='string' || !input.prompt.trim() || input.prompt.length>30000 || !['codex','claude'].includes(input.provider))return res.writeHead(400,{'content-type':'application/json'}).end('{"error":"Enter a task and choose a supported client."}');
-        const result=await engine.advice({prompt:input.prompt,provider:input.provider});
-        return res.writeHead(result.advice?200:503,{'content-type':'application/json'}).end(JSON.stringify(result));
+        const result=await engine.advice({prompt:input.prompt,provider:input.provider,disclosure:input.disclosure});
+        return res.writeHead(result.metadataChanged?409:result.advice?200:503,{'content-type':'application/json'}).end(JSON.stringify(result));
       }catch{return res.writeHead(503,{'content-type':'application/json'}).end('{"error":"Advice unavailable. Keep your current model and try again."}');}
     }
     if(req.url==='/health') {
       const c=current();refreshModels();
-      return res.writeHead(degraded?503:200,{'content-type':'application/json','cache-control':'no-store'}).end(JSON.stringify({ok:!degraded,service:'jev-desktop-hermes',version,config_state:degraded?'last-valid':'valid',enabled:c.enabled,keyAvailable:Boolean(loadKey(c)),classifier:c.classifier?.provider || 'typesafe',host:'127.0.0.1',port:server.address().port,maxPayloadBytes}));
+      return res.writeHead(degraded?503:200,{'content-type':'application/json','cache-control':'no-store'}).end(JSON.stringify({ok:!degraded,service:'jev-desktop-hermes',version,config_state:degraded?'last-valid':'valid',enabled:c.enabled,keyAvailable:Boolean(loadKey(c)),...classificationMetadata(c),host:'127.0.0.1',port:server.address().port,maxPayloadBytes}));
     }
     if(req.url==='/desktop/decision' && req.method==='POST') {
       try {

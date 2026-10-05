@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Simplify settings around the profile editor: global controls in Advanced,
+  collapsible fallback, optional model IDs and a change-only save bar. Share
+  navigation, design tokens and health feedback with Ask Jev.
+- Show timing controls only for applicable configured proxy integrations; retain
+  hidden preferences for native clients. Make privacy text follow the effective
+  classifier/limit and reject a changed disclosure before classification.
+- Return the committed settings snapshot even when a later refresh fails, and
+  expose degraded configuration consistently on both pages. Add regression tests
+  and documented desktop/mobile acceptance checks.
+- Cache immutable parsed model catalogs by file identity/version, preserving
+  immediate external-edit detection and fallback precedence. Configuration
+  reads remain uncached.
+
 - Fix missing SSH Codex runtime detection after legacy provider/catalog changes.
   Enable, disable, refresh and doctor now distinguish written settings from a
   live loaded catalog. Add `desktop-check` and explicit `desktop-reload` with

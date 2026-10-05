@@ -6,6 +6,7 @@ import {newTurnPrompt,conversationKey,isAgentSession} from '../upstream/src/resp
 import {newTurnPrompt as claudePrompt,conversationKey as claudeKey,sessionOf,isSubagentSpawn,applyTier,sanitizeSchema} from '../upstream/src/proxy.mjs';
 import {addJevModel} from '../upstream/src/codex-proxy.mjs';
 import {labels,loadKey,safeLog} from './settings.mjs';
+import {classificationMetadata} from './ui-metadata.mjs';
 
 const variantFor=model=>({'gpt-jev-luna':'luna','gpt-jev-sol':'sol'})[model] || null;
 const inFamily=(model,family)=>model?.endsWith('-'+family);
@@ -42,8 +43,11 @@ export class RoutingEngine {
     this.hookTurns=new Map();
   }
   remember(set,key) {set.add(key);if(set.size>2000)set.delete(set.values().next().value);}
-  async advice({prompt,provider='codex'}) {
+  async advice({prompt,provider='codex',disclosure}) {
     const config=this.config();
+    const metadata=classificationMetadata(config);
+    if(disclosure && (disclosure.classifier!==metadata.classifier || disclosure.classificationMaxChars!==metadata.classificationMaxChars))
+      return {metadataChanged:true,...metadata,error:'Classification settings changed. Review the updated privacy notice, then ask again.'};
     if(!config.enabled)return {error:'Routing is disabled. Enable the router before asking Jev.'};
     const p=config.providers[provider],started=Date.now();
     const override=detectOverride(prompt),jev=override?null:await this.classifier(prompt,config);

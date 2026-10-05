@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {modelChoices,modelName,reasoningValues,compatibleEffort,settingsEqual} from '../ui/settings-controls.js';
+import {modelChoices,modelName,reasoningValues,compatibleEffort,settingsEqual,changedSections} from '../ui/settings-controls.js';
 import {editableSettings} from '../src/settings-store.mjs';
 const settings=editableSettings(JSON.parse(fs.readFileSync(new URL('../config.example.json',import.meta.url),'utf8')));
 const data={settings,models:[{id:'gpt-6-luna',efforts:['low','medium','high']},{id:'gpt-6.1-sol',efforts:['low','high','xhigh']},{id:'gpt-6-astra',efforts:['high']}]};
@@ -28,4 +28,9 @@ test('Routing profiles restrict suggestions by family and keep separate drafts',
  assert(modelChoices(data,'codex','luna').every(p=>p.id.endsWith('-luna')));assert(modelChoices(data,'codex','sol').every(p=>p.id.endsWith('-sol')));
  const changed=structuredClone(settings);profileMap(changed,'luna').tiers.FAST.effort='high';assert.equal(profileMap(changed,'codex').tiers.FAST.effort,'medium');assert.equal(profileMap(changed,'sol').tiers.FAST.effort,'low');assert.equal(profileError(changed),null);
  profileMap(changed,'luna').tiers.STRONG.model='gpt-6.1-sol';assert.equal(profileError(changed).profile,'luna');assert.equal(profileError(changed).field,'STRONG');
+});
+test('Change summary separates profile edits from global changes and catches hidden invalid model IDs',()=>{
+ const changed=structuredClone(settings);changed.variants.codex.sol.tiers.FAST.effort='high';changed.disabledTiers=['LONG'];
+ assert.deepEqual(changedSections(settings,changed),['Jev Sol','Global settings']);
+ changed.providers.codex.tiers.FAST.model='bad model';assert.equal(profileError(changed).profile,'codex');
 });

@@ -5,6 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import {SettingsStore} from '../src/settings-store.mjs';
 import {startService} from '../src/service.mjs';
+import {routingCapabilities} from '../src/ui-metadata.mjs';
+import {healthPresentation,privacyNotice} from '../ui/status.js';
 const base=JSON.parse(fs.readFileSync(new URL('../config.example.json',import.meta.url),'utf8'));
 function fixture(t){const dir=fs.mkdtempSync(path.join(os.tmpdir(),'jev-settings-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));const file=path.join(dir,'config.json');const c=structuredClone(base);c.extra={preserve:true};c.classifier.privateExtension='do-not-expose';fs.writeFileSync(file,JSON.stringify(c));const store=new SettingsStore({file,catalog:()=>({models:[{slug:'gpt-6-luna',supported_reasoning_levels:[{effort:'medium'}]},{slug:'gpt-jev-auto'}]})});return {dir,file,c,store};}
 test('Settings projection excludes private/advanced fields and backup preserves original bytes',t=>{
@@ -63,4 +65,56 @@ test('Family profiles save independently, preserve extension fields and reject c
 test('Pre-profile settings clients preserve family maps and Claude timing',t=>{
  const {file,store,c}=fixture(t),snapshot=store.read();delete snapshot.settings.variants;delete snapshot.settings.routing.claude;snapshot.settings.classificationMaxChars=7000;
  store.save({revision:snapshot.revision,settings:snapshot.settings});const after=JSON.parse(fs.readFileSync(file));assert.deepEqual(after.variants,c.variants);assert.equal(after.classificationMaxChars,7000);assert.equal(after.routing.claude,c.routing.claude);
+});
+
+test('Committed save response uses its written snapshot without a post-commit reread',t=>{
+ const {file,store}=fixture(t),snapshot=store.read();snapshot.settings.classificationMaxChars=7000;
+ store.read=()=>{throw new Error('post-commit read must not run');};
+ const saved=store.save({revision:snapshot.revision,settings:snapshot.settings});
+ assert.equal(saved.settings.classificationMaxChars,7000);
+ assert.equal(JSON.parse(fs.readFileSync(file)).classificationMaxChars,7000);
+ const fresh=new SettingsStore({file,catalog:()=>({models:[]})}).read();assert.equal(saved.revision,fresh.revision);
+});
+
+test('Settings save remains successful when refreshing the catalog fails',async t=>{
+ const {file,store}=fixture(t);let failCatalog=false;
+ const catalog=()=>{if(failCatalog)throw Error('private catalog failure');return {models:[]};};store.catalog=catalog;
+ const service=await startService({config:()=>JSON.parse(fs.readFileSync(file)),settingsStore:store,port:0,catalog,logger:()=>{}});t.after(()=>service.close());
+ const origin='http://127.0.0.1:'+service.port,snapshot=await (await fetch(origin+'/settings/state')).json();failCatalog=true;
+ snapshot.settings.classificationMaxChars=7000;
+ const response=await fetch(origin+'/settings/state',{method:'POST',headers:{origin,'content-type':'application/json','x-jev-settings-token':snapshot.token},body:JSON.stringify({revision:snapshot.revision,settings:snapshot.settings})});
+ assert.equal(response.status,200);const saved=await response.json();assert.equal(saved.saved,true);assert.equal(saved.refreshRequired,true);assert.equal(saved.catalogUnavailable,true);assert.equal(saved.settings.classificationMaxChars,7000);
+ assert.equal(JSON.parse(fs.readFileSync(file)).classificationMaxChars,7000);assert(!JSON.stringify(saved).includes('private catalog failure'));
+});
+
+test('Capabilities distinguish native Desktop, native CLI, Hermes Claude and unknown installation records',t=>{
+ const {dir,c,store,file}=fixture(t);c.clients={codex:true,hermes:true,claude:true};c.routing={codex:'turn',hermes:'turn',claude:'conversation'};
+ assert.equal(routingCapabilities(c,dir).codex.configurable,true);
+ c.desktop.mode='hook-subagent';assert.equal(routingCapabilities(c,dir).codex.label,'Codex CLI');
+ c.desktop.mode='native-first';let capabilities=routingCapabilities(c,dir);assert.equal(capabilities.codex.label,'Codex CLI');assert.equal(capabilities.codex.configurable,true);
+ fs.writeFileSync(path.join(dir,'native-clients.json'),JSON.stringify({active:true,privatePath:'do-not-expose'}));
+ capabilities=routingCapabilities(c,dir);assert.equal(capabilities.codex.configurable,false);assert.match(capabilities.codex.note,/once per chat/);assert.equal(capabilities.hermes.label,'Hermes · Claude');assert.equal(capabilities.hermes.configurable,true);
+ fs.writeFileSync(file,JSON.stringify(c));const snapshot=store.read();snapshot.settings.classificationMaxChars=7000;store.save({revision:snapshot.revision,settings:snapshot.settings});
+ assert.equal(JSON.parse(fs.readFileSync(file)).routing.codex,'turn');assert(!JSON.stringify(snapshot).includes('do-not-expose'));
+ fs.writeFileSync(path.join(dir,'native-clients.json'),'{');assert.equal(routingCapabilities(c,dir).codex.configurable,false);assert.equal(routingCapabilities(c,dir).hermes.configurable,false);
+});
+
+test('Both pages describe degraded health and use the effective privacy limit and route',async t=>{
+ const {file,c,store}=fixture(t);c.classificationMaxChars=30000;c.classifier.provider='typesafe';fs.writeFileSync(file,JSON.stringify(c));
+ const service=await startService({config:()=>JSON.parse(fs.readFileSync(file)),settingsStore:store,port:0,catalog:()=>({models:[]}),logger:()=>{}});t.after(()=>service.close());
+ const origin='http://127.0.0.1:'+service.port;
+ const good=await (await fetch(origin+'/health')).json();assert.equal(good.classificationMaxChars,30000);assert.match(privacyNotice(good),/30,000/);assert.match(privacyNotice(good),/directly/);assert(!privacyNotice(good).includes('OpenRouter'));
+ fs.writeFileSync(file,'{');const response=await fetch(origin+'/health'),bad=await response.json();assert.equal(response.status,503);assert.equal(bad.config_state,'last-valid');assert.equal(healthPresentation(bad,response.ok).label,'Needs attention');assert.match(healthPresentation(bad,response.ok).detail,/last valid/);
+ assert.equal(healthPresentation(null).label,'Unavailable');assert.equal(healthPresentation({error:'unavailable'},false).label,'Unavailable');assert.equal(privacyNotice(null),null);
+});
+
+test('Advice rejects a changed disclosure before classification and allows the reviewed retry',async t=>{
+ const {file,c,store}=fixture(t);let calls=0;
+ const service=await startService({config:()=>JSON.parse(fs.readFileSync(file)),settingsStore:store,port:0,catalog:()=>({models:[]}),logger:()=>{},classifier:async()=>{calls++;return {choice:'haiku',confidence:1};}});t.after(()=>service.close());
+ const origin='http://127.0.0.1:'+service.port;
+ const post=disclosure=>fetch(origin+'/advice',{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify({prompt:'Synthetic task',provider:'codex',disclosure})});
+ c.classificationMaxChars=30000;fs.writeFileSync(file,JSON.stringify(c));
+ const response=await post({classifier:'openrouter',classificationMaxChars:8000});assert.equal(response.status,409);const changed=await response.json();assert.equal(calls,0);assert.equal(changed.classificationMaxChars,30000);
+ assert.equal((await post({classifier:changed.classifier,classificationMaxChars:changed.classificationMaxChars})).status,200);assert.equal(calls,1);
+ c.classifier.provider='typesafe';fs.writeFileSync(file,JSON.stringify(c));assert.equal((await post({classifier:'openrouter',classificationMaxChars:30000})).status,409);assert.equal(calls,1);
 });

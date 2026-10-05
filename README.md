@@ -139,14 +139,17 @@ The [local settings page](http://127.0.0.1:48767/settings) is part of the same
 service. Model dropdowns use the local Codex catalog; reasoning choices follow
 known capabilities. Saved unlisted IDs remain visible with a warning.
 
-![Settings preview: Jev Sol profile, editable tier models and reasoning, separate client timing](docs/assets/settings.jpg)
+![Settings preview: focused profile editor with global controls in Advanced](docs/assets/settings.jpg)
 
 <sub>Example configuration. Classifier readiness is simulated; no private keys or client data are shown.</sub>
 
-Choose a **routing profile** to edit its four tiers and fallback. Set selection
-timing separately for legacy proxy clients: once per conversation or once per
-new human turn. Native mode always selects only for a new chat; it does not
-reclassify follow-ups. Editing a profile here doesn't activate it in a client.
+Choose **Editing profile** to change its four tiers. Fallback settings are in a
+compact disclosure; global tier switches, applicable client timing and classifier
+details are under **Advanced**. The save bar appears when you have changes and
+names the profiles affected. Editing a profile doesn't activate it in a client.
+Native mode shows its fixed once-per-chat behavior; timing selectors apply only
+to configured proxy integrations. Both pages show configuration problems and a
+**Check again** action.
 
 | Profile | Model selection | Default FAST → LONG reasoning |
 | :--- | :--- | :--- |

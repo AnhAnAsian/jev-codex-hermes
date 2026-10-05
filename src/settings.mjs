@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import {classifierProvider} from './classifier-client.mjs';
+import {createCatalogLoader} from './model-catalog.mjs';
 export const home = process.env.JEV_SERVICE_HOME || path.join(os.homedir(), '.config/jev-router');
 export const configPath = path.join(home, 'config.json');
 export const DEFAULT_MAX_PAYLOAD_BYTES = 128*1024*1024;
@@ -56,12 +57,7 @@ export function readConfig() {
   delete process.env.JEV_DEBUG;delete process.env.JEV_DUMP;
   return c;
 }
-export function loadModelCatalog() {
-  for(const p of [path.join(os.homedir(),'.codex/models_cache.json'),path.join(home,'desktop-models.json'),path.join(home,'codex-models.json')]) {
-    try {const c=JSON.parse(fs.readFileSync(p,'utf8'));if(Array.isArray(c.models)&&c.models.length)return c;}catch{}
-  }
-  return {models:[]};
-}
+export const loadModelCatalog=createCatalogLoader([path.join(os.homedir(),'.codex/models_cache.json'),path.join(home,'desktop-models.json'),path.join(home,'codex-models.json')]);
 export function loadKey(config=readConfig()) {
   const openrouter=classifierProvider(config)==='openrouter';
   if (openrouter ? !process.env.OPENROUTER_API_KEY : !process.env.JEV_API_KEY && !process.env.TYPESAFE_API_KEY) {
